@@ -1,11 +1,13 @@
-import { loginUrl, type Me } from '../api'
+import type { Me } from '../api'
 
 interface Props {
   me: Me | null
+  onLogin: () => void
   onLogout: () => void
+  onWithdraw: () => void
 }
 
-export default function Header({ me, onLogout }: Props) {
+export default function Header({ me, onLogin, onLogout, onWithdraw }: Props) {
   return (
     <header className="site-header">
       <h1 className="logo">갈곳</h1>
@@ -15,11 +17,14 @@ export default function Header({ me, onLogout }: Props) {
           <button type="button" className="btn-line" onClick={onLogout}>
             로그아웃
           </button>
+          <button type="button" className="link-btn" onClick={onWithdraw}>
+            회원 탈퇴
+          </button>
         </div>
       ) : (
-        <a className="btn-kakao" href={loginUrl}>
-          카카오로 로그인
-        </a>
+        <button type="button" className="btn-line" onClick={onLogin}>
+          로그인
+        </button>
       )}
     </header>
   )
