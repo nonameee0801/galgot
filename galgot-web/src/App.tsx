@@ -1,16 +1,29 @@
 import { useEffect, useState } from 'react'
 import { ApiError, fetchMe, fetchRecommendations, logout } from './api.ts'
 import type { Me, Place, Recommendation } from './api.ts'
-import Controls from './assets/Controls.tsx'
-import Header from './assets/Header.tsx'
-import Hero from './assets/Hero.tsx'
-import PlaceList from './assets/PlaceList.tsx'
+import AuthModal from './components/AuthModal.tsx'
+import Controls from './components/Controls.tsx'
+import Header from './components/Header.tsx'
+import Hero from './components/Hero.tsx'
+import PlaceList from './components/PlaceList.tsx'
+import WithdrawModal from './components/WithdrawModal.tsx'
 import { REGIONS, dayOptions, moodOf } from './labels.ts'
 
 const PAGE_SIZE = 12
 
+type OpenModal = 'auth' | 'withdraw' | null
+
 function messageOf(e: unknown): string {
   return e instanceof ApiError ? e.message : '알 수 없는 오류가 났어요. 잠시 뒤에 다시 시도해 주세요.'
+}
+
+/** 카카오 로그인에 실패하면 백엔드가 ?login=failed 를 붙여 돌려보낸다. 한 번 읽고 주소에서 지운다. */
+function readLoginFailed(): boolean {
+  const url = new URL(window.location.href)
+  if (url.searchParams.get('login') !== 'failed') return false
+  url.searchParams.delete('login')
+  window.history.replaceState(null, '', url.pathname + url.search + url.hash)
+  return true
 }
 
 export default function App() {
@@ -28,6 +41,8 @@ export default function App() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [moreError, setMoreError] = useState<string | null>(null)
   const [me, setMe] = useState<Me | null>(null)
+  const [modal, setModal] = useState<OpenModal>(null)
+  const [loginFailed, setLoginFailed] = useState(readLoginFailed)
 
   const date = days[offset].date
 
@@ -87,11 +102,35 @@ export default function App() {
     }
   }
 
+  function handleAuthSuccess(next: Me) {
+    setMe(next)
+    setModal(null)
+    setLoginFailed(false)
+  }
+
+  function handleWithdrawn() {
+    setMe(null)
+    setModal(null)
+  }
+
   const hasMore = data !== null && page + 1 < data.places.totalPages
 
   return (
     <div className="page">
-      <Header me={me} onLogout={handleLogout} />
+      <Header
+        me={me}
+        onLogin={() => setModal('auth')}
+        onLogout={handleLogout}
+        onWithdraw={() => setModal('withdraw')}
+      />
+      {loginFailed && (
+        <div className="banner" role="alert">
+          <span>카카오 로그인에 실패했어요. 다시 시도해 주세요.</span>
+          <button type="button" className="link-btn" onClick={() => setLoginFailed(false)}>
+            닫기
+          </button>
+        </div>
+      )}
       <Controls days={days} offset={offset} onOffset={setOffset} region={region} onRegion={setRegion} />
 
       {error ? (
@@ -120,6 +159,9 @@ export default function App() {
       )}
 
       <footer className="footer">날씨는 기상청 단기예보, 장소 정보는 한국관광공사 TourAPI 자료예요.</footer>
+
+      {modal === 'auth' && <AuthModal onClose={() => setModal(null)} onSuccess={handleAuthSuccess} />}
+      {modal === 'withdraw' && <WithdrawModal onClose={() => setModal(null)} onDone={handleWithdrawn} />}
     </div>
   )
 }
