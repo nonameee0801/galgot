@@ -76,7 +76,10 @@ function defaultMessage(status: number): string {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+/** 요청마다 상태 코드별 안내 문구를 바꾸고 싶을 때 쓴다. 없으면 defaultMessage. */
+type Messages = Partial<Record<number, string>>
+
+async function request<T>(path: string, init?: RequestInit, messages?: Messages): Promise<T> {
   let res: Response
   try {
     // 로그인 세션 쿠키를 함께 보내야 해서 credentials를 켠다
@@ -85,12 +88,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError(0, defaultMessage(0))
   }
   if (!res.ok) {
-    throw new ApiError(res.status, defaultMessage(res.status))
+    throw new ApiError(res.status, messages?.[res.status] ?? defaultMessage(res.status))
   }
   if (res.status === 204) {
     return undefined as T
   }
   return (await res.json()) as T
+}
+
+function postJson<T>(path: string, body: unknown, messages?: Messages): Promise<T> {
+  return request<T>(
+    path,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
+    messages,
+  )
 }
 
 export interface RecommendationQuery {
@@ -125,6 +136,35 @@ export async function fetchMe(): Promise<Me | null> {
 
 export function logout(): Promise<void> {
   return request<void>('/api/auth/logout', { method: 'POST' })
+}
+
+/** 이메일 회원가입. 성공하면 바로 로그인 상태가 된다. */
+export function signup(email: string, password: string, nickname: string): Promise<Me> {
+  return postJson<Me>(
+    '/api/auth/signup',
+    { email, password, nickname: nickname.trim() === '' ? null : nickname.trim() },
+    {
+      400: '입력한 내용을 다시 확인해 주세요. 비밀번호는 영문과 숫자를 섞어 8~64자예요.',
+      409: '이미 가입된 이메일이에요. 로그인해 주세요.',
+    },
+  )
+}
+
+/** 이메일 로그인. 실패 이유는 서버가 일부러 알려 주지 않는다. */
+export function login(email: string, password: string): Promise<Me> {
+  return postJson<Me>('/api/auth/login', { email, password }, {
+    401: '이메일 또는 비밀번호가 맞지 않아요.',
+  })
+}
+
+/** 회원 탈퇴. 코스를 포함해 모두 지워지고 세션도 끊긴다. */
+export function withdraw(): Promise<void> {
+  return request<void>('/api/users/me', { method: 'DELETE' })
+}
+
+/** 화면에서 미리 확인하는 비밀번호 규칙(서버 CredentialPolicy와 같다). */
+export function isValidPassword(pw: string): boolean {
+  return /^[\x21-\x7E]{8,64}$/.test(pw) && /[A-Za-z]/.test(pw) && /[0-9]/.test(pw)
 }
 
 /** 브라우저를 이 주소로 이동시키면 카카오 로그인이 시작된다. */
