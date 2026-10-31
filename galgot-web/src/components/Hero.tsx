@@ -1,10 +1,18 @@
 import type { Recommendation } from '../api'
 import type { DayOption } from '../labels'
-import { weatherText } from '../labels'
+import { REGIONS, weatherText } from '../labels'
 
 interface Props {
   day: DayOption
   data: Recommendation | null
+}
+
+/** "서울 전체", "경기 · 가평군"처럼 지금 보고 있는 지역을 한 줄로. */
+function placeLabel(data: Recommendation): string {
+  const { region, area, areaName } = data.weather
+  if (area === region) return areaName
+  const regionName = REGIONS.find((r) => r.code === region)?.name ?? ''
+  return regionName ? `${regionName} · ${areaName}` : areaName
 }
 
 /** 첫 화면의 중심. 날씨를 숫자로 나열하기 전에 "그래서 오늘 어떻게 하면 되는지"를 문장으로 먼저 말한다. */
@@ -27,6 +35,7 @@ export default function Hero({ day, data }: Props) {
   return (
     <section className="hero">
       <div>
+        <p className="where">{placeLabel(data)}</p>
         <h2 className="verdict" aria-live="polite">
           {headline}
         </h2>

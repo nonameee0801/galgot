@@ -155,6 +155,44 @@ button {
   font-weight: 600;
 }
 
+/* 구·시군 선택 */
+.area-select {
+  display: flex;
+  align-items: center;
+  margin-left: 4px;
+}
+
+.area-select select {
+  padding: 6px 28px 6px 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+}
+
+.area-select select:disabled {
+  opacity: 0.5;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* 지금 보고 있는 지역 */
+.where {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 /* 첫 화면: 판정 문장과 큰 기온 */
 .hero {
   display: grid;

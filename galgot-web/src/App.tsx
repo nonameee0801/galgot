@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { ApiError, fetchMe, fetchRecommendations, logout } from './api.ts'
-import type { Me, Place, Recommendation } from './api.ts'
+import { ApiError, fetchAreas, fetchMe, fetchRecommendations, logout } from './api.ts'
+import type { Area, Me, Place, Recommendation } from './api.ts'
 import AuthModal from './components/AuthModal.tsx'
 import Controls from './components/Controls.tsx'
 import Header from './components/Header.tsx'
@@ -29,6 +29,8 @@ function readLoginFailed(): boolean {
 export default function App() {
   const [days] = useState(() => dayOptions(new Date()))
   const [region, setRegion] = useState(REGIONS[0].code)
+  const [areas, setAreas] = useState<Area[]>([])
+  const [area, setArea] = useState<string | null>(null)
   const [offset, setOffset] = useState(0)
   const [type, setType] = useState<number | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
@@ -46,13 +48,29 @@ export default function App() {
 
   const date = days[offset].date
 
+  // 시도가 바뀌면 그 시도의 구·시군 목록을 다시 받는다
+  useEffect(() => {
+    let cancelled = false
+    setAreas([])
+    fetchAreas(region)
+      .then((list) => {
+        if (!cancelled) setAreas(list)
+      })
+      .catch(() => {
+        // 목록을 못 받아도 시도 전체 추천은 볼 수 있다
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [region])
+
   // 지역, 날짜, 종류가 바뀔 때마다 첫 페이지부터 다시 불러온다
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(null)
     setMoreError(null)
-    fetchRecommendations({ region, date, type, page: 0, size: PAGE_SIZE })
+    fetchRecommendations({ region, area, date, type, page: 0, size: PAGE_SIZE })
       .then((res) => {
         if (cancelled) return
         setData(res)
@@ -68,7 +86,7 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [region, date, type, reloadKey])
+  }, [region, area, date, type, reloadKey])
 
   // 날씨에 따라 페이지 전체 분위기(배경색)를 바꾼다
   useEffect(() => {
@@ -83,7 +101,7 @@ export default function App() {
     setLoadingMore(true)
     setMoreError(null)
     try {
-      const res = await fetchRecommendations({ region, date, type, page: page + 1, size: PAGE_SIZE })
+      const res = await fetchRecommendations({ region, area, date, type, page: page + 1, size: PAGE_SIZE })
       setPlaces((prev) => [...prev, ...res.places.items])
       setPage(res.places.page)
     } catch (e) {
@@ -113,6 +131,12 @@ export default function App() {
     setModal(null)
   }
 
+  /** 시도를 바꾸면 구·시군은 "전체"로 되돌린다. */
+  function handleRegion(code: string) {
+    setRegion(code)
+    setArea(null)
+  }
+
   const hasMore = data !== null && page + 1 < data.places.totalPages
 
   return (
@@ -131,7 +155,16 @@ export default function App() {
           </button>
         </div>
       )}
-      <Controls days={days} offset={offset} onOffset={setOffset} region={region} onRegion={setRegion} />
+      <Controls
+        days={days}
+        offset={offset}
+        onOffset={setOffset}
+        region={region}
+        onRegion={handleRegion}
+        areas={areas}
+        area={area}
+        onArea={setArea}
+      />
 
       {error ? (
         <div className="notice">
