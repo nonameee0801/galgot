@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/** 지역(시도) + 날짜별 하루 요약 예보. (ldong_regn_cd, forecast_date)가 유일하다. */
+/** 지역(areas) + 날짜별 하루 요약 예보. (area_code, forecast_date)가 유일하다. ldong_regn_cd는 지역의 시도. */
 @Entity
 @Table(name = "weather_forecasts")
 public class WeatherForecast {
@@ -20,6 +20,9 @@ public class WeatherForecast {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "area_code", nullable = false, length = 5)
+    private String areaCode;
 
     @Column(name = "ldong_regn_cd", nullable = false, length = 5)
     private String ldongRegnCd;
@@ -59,8 +62,9 @@ public class WeatherForecast {
     protected WeatherForecast() {
     }
 
-    public static WeatherForecast create(String ldongRegnCd, int nx, int ny, LocalDate date) {
+    public static WeatherForecast create(String areaCode, String ldongRegnCd, int nx, int ny, LocalDate date) {
         WeatherForecast f = new WeatherForecast();
+        f.areaCode = areaCode;
         f.ldongRegnCd = ldongRegnCd;
         f.nx = nx;
         f.ny = ny;
@@ -80,6 +84,7 @@ public class WeatherForecast {
     }
 
     public Long getId() { return id; }
+    public String getAreaCode() { return areaCode; }
     public String getLdongRegnCd() { return ldongRegnCd; }
     public int getNx() { return nx; }
     public int getNy() { return ny; }

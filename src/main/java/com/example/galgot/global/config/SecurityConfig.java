@@ -22,7 +22,8 @@ import java.util.List;
 
 /**
  * 접근 규칙.
- * - 장소 조회, 공유 코스 조회, 날씨, 추천(/api/places, /api/courses/shared, /api/weather, /api/recommendations)과
+ * - 장소 조회, 공유 코스 조회, 날씨, 추천, 지역 목록(/api/places, /api/courses/shared, /api/weather,
+ *   /api/recommendations, /api/areas)과
  *   이메일 가입·로그인(/api/auth/signup, /api/auth/login)은 로그인 없이 허용
  * - 그 외는 로그인 필요 (카카오 로그인 또는 이메일 로그인)
  * - /api/** 에 로그인 없이 접근하면 로그인 화면으로 보내지 않고 401을 돌려준다
@@ -54,7 +55,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.ignoringRequestMatchers(apiRequests))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/places/**", "/api/courses/shared/**",
-                                "/api/weather/**", "/api/recommendations/**",
+                                "/api/weather/**", "/api/recommendations/**", "/api/areas/**",
                                 "/api/auth/signup", "/api/auth/login", "/error").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex

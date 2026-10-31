@@ -10,7 +10,7 @@ import java.util.Optional;
 
 public interface WeatherForecastRepository extends JpaRepository<WeatherForecast, Long> {
 
-    Optional<WeatherForecast> findByLdongRegnCdAndForecastDate(String ldongRegnCd, LocalDate forecastDate);
+    Optional<WeatherForecast> findByAreaCodeAndForecastDate(String areaCode, LocalDate forecastDate);
 
-    List<WeatherForecast> findAllByLdongRegnCdAndForecastDateIn(String ldongRegnCd, Collection<LocalDate> dates);
+    List<WeatherForecast> findAllByAreaCodeAndForecastDateIn(String areaCode, Collection<LocalDate> dates);
 }
