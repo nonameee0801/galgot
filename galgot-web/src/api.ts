@@ -7,6 +7,10 @@ export type PrecipType = 'NONE' | 'SHOWER' | 'RAIN' | 'RAIN_SNOW' | 'SNOW'
 
 export interface Weather {
   region: string
+  /** 날씨를 받은 지역 코드. 시도 전체면 region과 같다. */
+  area: string
+  /** 예: "서울 전체", "가평군" */
+  areaName: string
   date: string
   sky: Sky | null
   precipType: PrecipType | null
@@ -50,6 +54,12 @@ export interface Recommendation {
 export interface Me {
   id: number
   nickname: string
+}
+
+/** 시도 안의 구·시군 */
+export interface Area {
+  code: string
+  name: string
 }
 
 export class ApiError extends Error {
@@ -106,6 +116,8 @@ function postJson<T>(path: string, body: unknown, messages?: Messages): Promise<
 
 export interface RecommendationQuery {
   region: string
+  /** null이면 시도 전체 */
+  area: string | null
   date: string
   type: number | null
   page: number
@@ -119,10 +131,18 @@ export function fetchRecommendations(q: RecommendationQuery): Promise<Recommenda
     page: String(q.page),
     size: String(q.size),
   })
+  if (q.area !== null) {
+    params.set('area', q.area)
+  }
   if (q.type !== null) {
     params.set('type', String(q.type))
   }
   return request<Recommendation>(`/api/recommendations?${params.toString()}`)
+}
+
+/** 시도 안의 구·시군 목록(가나다순). */
+export function fetchAreas(region: string): Promise<Area[]> {
+  return request<Area[]>(`/api/areas?region=${encodeURIComponent(region)}`)
 }
 
 /** 로그인하지 않았으면(401) null. */
