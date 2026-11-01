@@ -34,12 +34,8 @@ export default function WeatherCard({ day, data }: Props) {
     )
   }
 
-  const { weather, outdoorSuitable, reasons } = data
+  const { weather, outdoorSuitable, message } = data
   const headline = outdoorSuitable ? `${day.topic} 밖에서 걸어도 좋아요` : `${day.topic} 실내에서 보내요`
-  const because = reasons.length > 0 ? `${reasons.join(', ')} 때문에 ` : ''
-  const sub = outdoorSuitable
-    ? '야외 활동에 큰 문제가 없어요. 모든 장소를 보여드려요.'
-    : `${because}실내 장소를 먼저 보여드려요.`
   const label = open ? '날씨 자세히 접기' : '날씨 자세히 펼치기'
 
   return (
@@ -64,7 +60,8 @@ export default function WeatherCard({ day, data }: Props) {
         {headline}
       </p>
       <div id="weather-detail" hidden={!open}>
-        <p className="wc-sub">{sub}</p>
+        {/* 판정 이유와 지금 고른 실내/실외에 맞춘 안내는 서버가 만든다 */}
+        <p className="wc-sub">{message}</p>
         <dl className="facts">
           <div>
             <dt>최고</dt>

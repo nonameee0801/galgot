@@ -2,6 +2,8 @@
 export const API_BASE: string = import.meta.env.VITE_API_BASE ?? 'http://localhost:8080'
 
 export type Env = 'INDOOR' | 'OUTDOOR' | 'BOTH'
+/** 화면의 [실내] [실외] [둘 다] 선택. 고르지 않으면(null) 날씨에 맞춰 보여 준다. */
+export type EnvChoice = 'INDOOR' | 'OUTDOOR' | 'ALL'
 export type Sky = 'CLEAR' | 'MOSTLY_CLOUDY' | 'OVERCAST'
 export type PrecipType = 'NONE' | 'SHOWER' | 'RAIN' | 'RAIN_SNOW' | 'SNOW'
 
@@ -46,6 +48,8 @@ export interface PageResponse<T> {
 export interface Recommendation {
   weather: Weather
   outdoorSuitable: boolean
+  /** 그날 판정에 따른 추천: 적합하면 OUTDOOR, 부적합하면 INDOOR */
+  recommendedEnv: Env
   reasons: string[]
   message: string
   places: PageResponse<Place>
@@ -120,6 +124,8 @@ export interface RecommendationQuery {
   area: string | null
   date: string
   type: number | null
+  /** null이면 날씨에 맞춰(부적합한 날 실외 제외) */
+  env: EnvChoice | null
   page: number
   size: number
 }
@@ -136,6 +142,9 @@ export function fetchRecommendations(q: RecommendationQuery): Promise<Recommenda
   }
   if (q.type !== null) {
     params.set('type', String(q.type))
+  }
+  if (q.env !== null) {
+    params.set('env', q.env)
   }
   return request<Recommendation>(`/api/recommendations?${params.toString()}`)
 }
@@ -189,3 +198,6 @@ export function isValidPassword(pw: string): boolean {
 
 /** 브라우저를 이 주소로 이동시키면 카카오 로그인이 시작된다. */
 export const loginUrl = `${API_BASE}/oauth2/authorization/kakao`
+
+/** 카카오 로그인 뒤 돌아올 화면 주소를 잠깐 저장해 두는 키(sessionStorage). */
+export const RETURN_TO_KEY = 'galgot.returnTo'

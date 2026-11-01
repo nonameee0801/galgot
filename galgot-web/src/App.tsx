@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes } from 'react-router'
-import { fetchMe, logout } from './api.ts'
+import { Navigate, Route, Routes, useNavigate, useSearchParams } from 'react-router'
+import { RETURN_TO_KEY, fetchMe, logout } from './api.ts'
 import type { Me } from './api.ts'
 import AuthModal from './components/AuthModal.tsx'
 import Header from './components/Header.tsx'
@@ -9,24 +9,42 @@ import MainPage from './pages/MainPage.tsx'
 
 type OpenModal = 'auth' | 'withdraw' | null
 
-/** 카카오 로그인에 실패하면 백엔드가 ?login=failed 를 붙여 돌려보낸다. 한 번 읽고 주소에서 지운다. */
-function readLoginFailed(): boolean {
-  const url = new URL(window.location.href)
-  if (url.searchParams.get('login') !== 'failed') return false
-  url.searchParams.delete('login')
-  window.history.replaceState(null, '', url.pathname + url.search + url.hash)
-  return true
+/** 카카오 로그인 전에 저장해 둔 주소를 한 번 꺼내고 지운다. 이 사이트 안의 경로(/...)만 받는다. */
+function takeReturnTo(): string | null {
+  try {
+    const saved = window.sessionStorage.getItem(RETURN_TO_KEY)
+    window.sessionStorage.removeItem(RETURN_TO_KEY)
+    return saved !== null && saved.startsWith('/') && !saved.startsWith('//') ? saved : null
+  } catch {
+    return null
+  }
 }
 
 /** 화면 전체의 틀. 헤더, 로그인 상태, 팝업은 여기서 관리하고 주소에 따라 페이지를 바꾼다. */
 export default function App() {
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
   const [me, setMe] = useState<Me | null>(null)
   const [modal, setModal] = useState<OpenModal>(null)
-  const [loginFailed, setLoginFailed] = useState(readLoginFailed)
+  // 카카오 로그인에 실패하면 백엔드가 ?login=failed 를 붙여 돌려보낸다
+  const [loginFailed, setLoginFailed] = useState(() => params.get('login') === 'failed')
 
   useEffect(() => {
     fetchMe().then(setMe)
   }, [])
+
+  // 카카오 로그인에서 돌아왔으면 로그인 전에 보던 주소로 되돌리고, ?login=failed 는 주소에서 지운다(처음 한 번만)
+  useEffect(() => {
+    const returnTo = takeReturnTo()
+    if (returnTo !== null) {
+      navigate(returnTo, { replace: true })
+    } else if (window.location.search.includes('login=')) {
+      const p = new URLSearchParams(window.location.search)
+      p.delete('login')
+      const search = p.toString()
+      navigate({ pathname: window.location.pathname, search: search ? `?${search}` : '' }, { replace: true })
+    }
+  }, [navigate])
 
   async function handleLogout() {
     try {

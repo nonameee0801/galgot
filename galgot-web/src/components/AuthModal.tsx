@@ -1,8 +1,17 @@
 import { useState, type FormEvent } from 'react'
-import { ApiError, isValidPassword, login, loginUrl, signup, type Me } from '../api'
+import { ApiError, RETURN_TO_KEY, isValidPassword, login, loginUrl, signup, type Me } from '../api'
 import Modal from './Modal'
 
 type Mode = 'login' | 'signup'
+
+/** 카카오 로그인은 페이지를 떠났다가 첫 화면(/)으로 돌아오므로, 지금 보던 주소를 기억해 둔다. */
+function rememberReturnTo() {
+  try {
+    window.sessionStorage.setItem(RETURN_TO_KEY, window.location.pathname + window.location.search)
+  } catch {
+    // 저장하지 못하면 첫 화면으로 돌아온다
+  }
+}
 
 interface Props {
   onClose: () => void
@@ -46,7 +55,7 @@ export default function AuthModal({ onClose, onSuccess }: Props) {
 
   return (
     <Modal title={isSignup ? '회원가입' : '로그인'} onClose={onClose}>
-      <a className="btn-kakao btn-block" href={loginUrl}>
+      <a className="btn-kakao btn-block" href={loginUrl} onClick={rememberReturnTo}>
         카카오로 시작하기
       </a>
       <p className="divider">또는 이메일로</p>
