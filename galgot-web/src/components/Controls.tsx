@@ -1,11 +1,7 @@
 import type { Area } from '../api'
-import type { DayOption } from '../labels'
 import { REGIONS } from '../labels'
 
 interface Props {
-  days: DayOption[]
-  offset: number
-  onOffset: (i: number) => void
   region: string
   onRegion: (code: string) => void
   areas: Area[]
@@ -13,24 +9,10 @@ interface Props {
   onArea: (code: string | null) => void
 }
 
-/** 날짜(오늘~3일 뒤)와 지역(시도, 구·시군)을 고르는 줄. 고르면 페이지 분위기도 함께 바뀐다. */
-export default function Controls({ days, offset, onOffset, region, onRegion, areas, area, onArea }: Props) {
+/** 지역(시도, 구·시군)을 고르는 줄. 날짜는 고르지 않고 항상 오늘 기준이다(다른 날짜는 날씨기반 추천에서 고른다). */
+export default function Controls({ region, onRegion, areas, area, onArea }: Props) {
   return (
     <div className="controls">
-      <div className="days" role="group" aria-label="날짜 선택">
-        {days.map((d, i) => (
-          <button
-            key={d.date}
-            type="button"
-            className="seg"
-            aria-pressed={i === offset}
-            onClick={() => onOffset(i)}
-          >
-            {d.name}
-            <small>{d.short}</small>
-          </button>
-        ))}
-      </div>
       <div className="regions" role="group" aria-label="지역 선택">
         {REGIONS.map((r) => (
           <button
