@@ -85,6 +85,7 @@ export default function App() {
 
       <Routes>
         <Route path="/" element={<MainPage />} />
+        <Route path="/places/:id" element={<MainPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 

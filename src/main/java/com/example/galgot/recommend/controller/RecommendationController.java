@@ -1,6 +1,7 @@
 package com.example.galgot.recommend.controller;
 
 import com.example.galgot.area.service.AreaService;
+import com.example.galgot.recommend.dto.MarkerResponse;
 import com.example.galgot.recommend.dto.RecommendationResponse;
 import com.example.galgot.recommend.service.EnvPreference;
 import com.example.galgot.recommend.service.RecommendationService;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * GET /api/recommendations?region=41&area=41820&date=2026-11-01&type=12&env=INDOOR&page=0&size=20
@@ -42,5 +44,20 @@ public class RecommendationController {
             @RequestParam(name = "size", defaultValue = "20") int size) {
         LocalDate target = date != null ? date : WeatherService.today();
         return recommendationService.recommend(areaService.resolve(region, area), target, type, env, page, size);
+    }
+
+    /**
+     * GET /api/recommendations/markers?region=41&area=41820&type=12&env=INDOOR
+     * 지도 마커용. 목록과 같은 조건의 장소(id, 이름, 좌표, 실내/실외)를 페이지 없이 돌려준다. 로그인 없이 조회.
+     */
+    @GetMapping("/markers")
+    public List<MarkerResponse> markers(
+            @RequestParam(name = "region", defaultValue = "11") String region,
+            @RequestParam(name = "area", required = false) String area,
+            @RequestParam(name = "date", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(name = "type", required = false) Integer type,
+            @RequestParam(name = "env", required = false) EnvPreference.Choice env) {
+        LocalDate target = date != null ? date : WeatherService.today();
+        return recommendationService.markers(areaService.resolve(region, area), target, type, env);
     }
 }
