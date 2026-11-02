@@ -1,4 +1,4 @@
-import type { Env, Weather } from './api.ts'
+import type { Env, EnvChoice, Weather } from './api.ts'
 
 export const REGIONS = [
   { code: '11', name: '서울' },
@@ -14,9 +14,15 @@ export const TYPES: { code: number | null; name: string }[] = [
 
 export const ENV_LABEL: Record<Env, string> = {
   INDOOR: '실내',
-  OUTDOOR: '야외',
+  OUTDOOR: '실외',
   BOTH: '실내외',
 }
+
+export const ENV_CHOICES: { code: EnvChoice; name: string }[] = [
+  { code: 'INDOOR', name: '실내' },
+  { code: 'OUTDOOR', name: '실외' },
+  { code: 'ALL', name: '둘 다' },
+]
 
 export function typeName(contentTypeId: number): string {
   return TYPES.find((t) => t.code === contentTypeId)?.name ?? '장소'

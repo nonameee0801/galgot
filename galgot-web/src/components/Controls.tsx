@@ -1,11 +1,9 @@
+import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import type { Area } from '../api'
-import type { DayOption } from '../labels'
 import { REGIONS } from '../labels'
 
 interface Props {
-  days: DayOption[]
-  offset: number
-  onOffset: (i: number) => void
   region: string
   onRegion: (code: string) => void
   areas: Area[]
@@ -13,36 +11,43 @@ interface Props {
   onArea: (code: string | null) => void
 }
 
-/** 날짜(오늘~3일 뒤)와 지역(시도, 구·시군)을 고르는 줄. 고르면 페이지 분위기도 함께 바뀐다. */
-export default function Controls({ days, offset, onOffset, region, onRegion, areas, area, onArea }: Props) {
+/**
+ * 지역(시도, 구·시군)을 고르는 줄. 날짜는 고르지 않고 항상 오늘 기준이다(다른 날짜는 날씨기반 추천에서 고른다).
+ * 구·시군은 "종로구 ▾" 버튼을 눌러 펼치는 버튼 격자에서 고르고, 고르면 다시 접힌다.
+ */
+export default function Controls({ region, onRegion, areas, area, onArea }: Props) {
+  const [open, setOpen] = useState(false)
+  const unit = region === '11' ? '구' : '시·군'
+  const current = areas.find((a) => a.code === area)?.name ?? '전체'
+
+  function pickRegion(code: string) {
+    setOpen(false)
+    onRegion(code)
+  }
+
+  function pickArea(code: string | null) {
+    setOpen(false)
+    onArea(code)
+  }
+
   return (
     <div className="controls">
-      <div className="days" role="group" aria-label="날짜 선택">
-        {days.map((d, i) => (
-          <button
-            key={d.date}
-            type="button"
-            className="seg"
-            aria-pressed={i === offset}
-            onClick={() => onOffset(i)}
-          >
-            {d.name}
-            <small>{d.short}</small>
-          </button>
-        ))}
-      </div>
-      <div className="regions" role="group" aria-label="지역 선택">
+      <div className="regions" role="group" aria-label="시도 선택">
         {REGIONS.map((r) => (
           <button
             key={r.code}
             type="button"
             className="seg"
             aria-pressed={r.code === region}
-            onClick={() => onRegion(r.code)}
+            onClick={() => pickRegion(r.code)}
           >
             {r.name}
           </button>
         ))}
+        {/*
+          select-box 형태 (2026-11-02 접었다 펴는 버튼 나열식으로 바꾸면서 주석 처리)
+          되돌리려면 이 주석을 풀고, 아래 area-toggle과 area-grid 부분을 지운다. index.css의 .area-select 주석도 함께 푼다.
+
         <label className="area-select">
           <span className="sr-only">구·시군</span>
           <select
@@ -58,7 +63,41 @@ export default function Controls({ days, offset, onOffset, region, onRegion, are
             ))}
           </select>
         </label>
+        */}
       </div>
+
+      {/* 버튼 나열식: 펼치기 버튼 + 구·시군 버튼 격자 */}
+      <button
+        type="button"
+        className="area-toggle"
+        aria-expanded={open}
+        aria-controls="area-grid"
+        aria-label={`${unit} 선택: ${current}`}
+        disabled={areas.length === 0}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <strong>{current}</strong>
+        <ChevronDown size={18} aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="area-grid" id="area-grid" role="group" aria-label={`${unit} 선택`}>
+          <button type="button" className="area-chip" aria-pressed={area === null} onClick={() => pickArea(null)}>
+            전체
+          </button>
+          {areas.map((a) => (
+            <button
+              key={a.code}
+              type="button"
+              className="area-chip"
+              aria-pressed={a.code === area}
+              title={a.name}
+              onClick={() => pickArea(a.code)}
+            >
+              {a.name}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

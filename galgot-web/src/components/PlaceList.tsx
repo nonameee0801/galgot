@@ -14,6 +14,7 @@ interface Props {
   onMore: () => void
 }
 
+/** 패널 폭에 맞춘 한 줄 카드: 왼쪽 작은 사진, 오른쪽 이름과 주소. */
 function Tile({ place }: { place: Place }) {
   const [broken, setBroken] = useState(false)
   const src = place.thumbnailUrl ?? place.imageUrl
@@ -28,12 +29,14 @@ function Tile({ place }: { place: Place }) {
           <span className="thumb-fallback">{typeName(place.contentTypeId)}</span>
         )}
       </div>
-      <h3>{place.title}</h3>
-      <p className="addr">{shortAddr(place.addr)}</p>
-      <p className="meta">
-        <span className={`env env-${place.env}`}>{ENV_LABEL[place.env]}</span>
-        <span>{typeName(place.contentTypeId)}</span>
-      </p>
+      <div className="tile-body">
+        <h4>{place.title}</h4>
+        <p className="addr">{shortAddr(place.addr)}</p>
+        <p className="meta">
+          <span className={`env env-${place.env}`}>{ENV_LABEL[place.env]}</span>
+          <span>{typeName(place.contentTypeId)}</span>
+        </p>
+      </div>
     </li>
   )
 }
@@ -52,7 +55,7 @@ export default function PlaceList({
   return (
     <section>
       <div className="list-head">
-        <h2>추천 장소 {total.toLocaleString('ko-KR')}곳</h2>
+        <h3>추천 장소 {total.toLocaleString('ko-KR')}곳</h3>
         <div className="chips" role="group" aria-label="장소 종류">
           {TYPES.map((t) => (
             <button
