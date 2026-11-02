@@ -1,6 +1,7 @@
 package com.example.galgot.place.controller;
 
 import com.example.galgot.place.domain.Env;
+import com.example.galgot.area.service.AreaService;
 import com.example.galgot.place.dto.PageResponse;
 import com.example.galgot.place.dto.PlaceDetailResponse;
 import com.example.galgot.place.dto.PlaceResponse;
@@ -20,10 +21,12 @@ public class PlaceController {
 
     private final PlaceQueryService queryService;
     private final PlaceDetailService detailService;
+    private final AreaService areaService;
 
-    public PlaceController(PlaceQueryService queryService, PlaceDetailService detailService) {
+    public PlaceController(PlaceQueryService queryService, PlaceDetailService detailService, AreaService areaService) {
         this.queryService = queryService;
         this.detailService = detailService;
+        this.areaService = areaService;
     }
 
     /**
@@ -45,10 +48,12 @@ public class PlaceController {
                 PlaceResponse::from);
     }
 
+    /** 장소 상세. 장소가 속한 구·시군 지역 코드(areaCode)를 함께 준다(연결표에 없으면 null). */
     @GetMapping("/{id}")
     public PlaceResponse detail(@PathVariable("id") Long id) {
         return queryService.find(id)
-                .map(PlaceResponse::from)
+                .map(p -> PlaceResponse.from(p,
+                        areaService.areaCodeOf(p.getLdongRegnCd(), p.getLdongSignguCd()).orElse(null)))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "장소를 찾을 수 없습니다."));
     }
 

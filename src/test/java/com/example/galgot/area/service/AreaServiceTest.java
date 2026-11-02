@@ -101,4 +101,29 @@ class AreaServiceTest {
 
         assertEquals(List.of("820"), areaService.signguCodes(GAPYEONG));
     }
+
+    @Test
+    void 장소의_시군구_코드로_속한_지역을_찾는다() {
+        when(areaRepository.findAreaCodes("41", "150")).thenReturn(List.of("41150"));
+
+        assertEquals(Optional.of("41150"), areaService.areaCodeOf("41", "150"));
+    }
+
+    @Test
+    void 구가_있는_시는_구_코드로도_시_지역을_찾는다() {
+        // 수원시 팔달구(115)는 수원시(41110)로 이어진다(V6 연결표)
+        when(areaRepository.findAreaCodes("41", "115")).thenReturn(List.of("41110"));
+
+        assertEquals(Optional.of("41110"), areaService.areaCodeOf("41", "115"));
+    }
+
+    @Test
+    void 연결표에_없거나_코드가_비면_빈_값() {
+        when(areaRepository.findAreaCodes("41", "999")).thenReturn(List.of());
+
+        assertTrue(areaService.areaCodeOf("41", "999").isEmpty());
+        assertTrue(areaService.areaCodeOf("41", null).isEmpty());
+        assertTrue(areaService.areaCodeOf(" ", "150").isEmpty());
+        verify(areaRepository, never()).findAreaCodes("41", null);
+    }
 }
