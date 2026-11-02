@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 /**
  * 코스 관련 규칙.
  * - 내 코스만 수정, 삭제할 수 있다 (남의 코스는 403)
- * - 공유 링크는 공개(publicCourse=true)로 설정한 코스만 열린다
+ * - 공유 링크(추측할 수 없는 UUID)를 아는 사람은 로그인 없이 코스를 볼 수 있다. 공개/비공개는 쓰지 않는다(2026-11-03 결정)
  */
 @Service
 @Transactional
@@ -116,13 +116,15 @@ public class CourseService {
         return CourseDetailResponse.from(course);
     }
 
-    /** 공유 링크로 조회. 공개 코스가 아니면 존재 여부를 알려 주지 않도록 똑같이 404로 응답한다. */
+    /** 공유 링크로 조회. 없는 링크는 404. (2026-11-03부터 공개 여부를 보지 않는다. is_public 컬럼은 남겨 두고 쓰지 않음) */
     @Transactional(readOnly = true)
     public CourseDetailResponse getShared(String shareCode) {
-        Course course = courseRepository.findByShareCode(shareCode)
-                .filter(Course::isPublicCourse)
+        return CourseDetailResponse.from(findShared(shareCode));
+    }
+
+    private Course findShared(String shareCode) {
+        return courseRepository.findByShareCode(shareCode)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "코스를 찾을 수 없습니다."));
-        return CourseDetailResponse.from(course);
     }
 
     private Course getOwned(Long userId, Long courseId) {
