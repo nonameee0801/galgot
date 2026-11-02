@@ -45,6 +45,15 @@ export interface PageResponse<T> {
   totalPages: number
 }
 
+/** 지도 마커용 가벼운 장소 정보 */
+export interface MarkerItem {
+  id: number
+  title: string
+  lat: number
+  lng: number
+  env: Env
+}
+
 export interface Recommendation {
   weather: Weather
   outdoorSuitable: boolean
@@ -147,6 +156,20 @@ export function fetchRecommendations(q: RecommendationQuery): Promise<Recommenda
     params.set('env', q.env)
   }
   return request<Recommendation>(`/api/recommendations?${params.toString()}`)
+}
+
+/** 지도 마커. 목록과 같은 조건(지역, 오늘 날씨, 실내/실외, 종류)의 장소를 페이지 없이 받는다. */
+export function fetchMarkers(q: Omit<RecommendationQuery, 'page' | 'size'>): Promise<MarkerItem[]> {
+  const params = new URLSearchParams({ region: q.region, date: q.date })
+  if (q.area !== null) params.set('area', q.area)
+  if (q.type !== null) params.set('type', String(q.type))
+  if (q.env !== null) params.set('env', q.env)
+  return request<MarkerItem[]>(`/api/recommendations/markers?${params.toString()}`)
+}
+
+/** 장소 상세 */
+export function fetchPlace(id: number): Promise<Place> {
+  return request<Place>(`/api/places/${id}`, undefined, { 404: '장소를 찾을 수 없어요.' })
 }
 
 /** 시도 안의 구·시군 목록(가나다순). */

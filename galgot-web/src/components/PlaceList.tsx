@@ -12,31 +12,40 @@ interface Props {
   loadingMore: boolean
   moreError: string | null
   onMore: () => void
+  selectedId: number | null
+  onSelect: (id: number) => void
 }
 
-/** 패널 폭에 맞춘 한 줄 카드: 왼쪽 작은 사진, 오른쪽 이름과 주소. */
-function Tile({ place }: { place: Place }) {
+/** 패널 폭에 맞춘 한 줄 카드: 왼쪽 작은 사진, 오른쪽 이름과 주소. 누르면 지도에서 그 장소로 가고 상세가 열린다. */
+function Tile({ place, selected, onSelect }: { place: Place; selected: boolean; onSelect: (id: number) => void }) {
   const [broken, setBroken] = useState(false)
   const src = place.thumbnailUrl ?? place.imageUrl
   const showImage = src !== null && !broken
 
   return (
-    <li className="tile">
-      <div className="thumb">
-        {showImage ? (
-          <img src={src} alt="" loading="lazy" onError={() => setBroken(true)} />
-        ) : (
-          <span className="thumb-fallback">{typeName(place.contentTypeId)}</span>
-        )}
-      </div>
-      <div className="tile-body">
-        <h4>{place.title}</h4>
-        <p className="addr">{shortAddr(place.addr)}</p>
-        <p className="meta">
-          <span className={`env env-${place.env}`}>{ENV_LABEL[place.env]}</span>
-          <span>{typeName(place.contentTypeId)}</span>
-        </p>
-      </div>
+    <li>
+      <button
+        type="button"
+        className={selected ? 'tile is-selected' : 'tile'}
+        aria-current={selected ? 'true' : undefined}
+        onClick={() => onSelect(place.id)}
+      >
+        <span className="thumb">
+          {showImage ? (
+            <img src={src} alt="" loading="lazy" onError={() => setBroken(true)} />
+          ) : (
+            <span className="thumb-fallback">{typeName(place.contentTypeId)}</span>
+          )}
+        </span>
+        <span className="tile-body">
+          <span className="tile-title">{place.title}</span>
+          <span className="addr">{shortAddr(place.addr)}</span>
+          <span className="meta">
+            <span className={`env env-${place.env}`}>{ENV_LABEL[place.env]}</span>
+            <span>{typeName(place.contentTypeId)}</span>
+          </span>
+        </span>
+      </button>
     </li>
   )
 }
@@ -51,6 +60,8 @@ export default function PlaceList({
   loadingMore,
   moreError,
   onMore,
+  selectedId,
+  onSelect,
 }: Props) {
   return (
     <section>
@@ -78,7 +89,7 @@ export default function PlaceList({
       ) : (
         <ul className="tiles">
           {places.map((p) => (
-            <Tile key={p.id} place={p} />
+            <Tile key={p.id} place={p} selected={p.id === selectedId} onSelect={onSelect} />
           ))}
         </ul>
       )}

@@ -94,3 +94,11 @@ export function shortAddr(addr: string | null): string {
   if (!addr) return ''
   return addr.replace(/^(서울특별시|경기도)\s*/, '')
 }
+
+/**
+ * 좌표가 서울·경기 범위 안인지. 서버의 RecommendationService.inServiceArea와 같은 범위다.
+ * TourAPI에 좌표가 엉뚱하게 들어간 장소가 있어, 그런 장소는 "카카오맵에서 보기"를 숨긴다.
+ */
+export function inServiceArea(lat: number | null, lng: number | null): boolean {
+  return lat !== null && lng !== null && lat >= 36.8 && lat <= 38.4 && lng >= 126.0 && lng <= 128.2
+}

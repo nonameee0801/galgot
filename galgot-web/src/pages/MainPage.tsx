@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router'
-import { ApiError, fetchAreas, fetchRecommendations } from '../api.ts'
-import type { Area, EnvChoice, Place, Recommendation } from '../api.ts'
+import { useCallback, useEffect, useState } from 'react'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
+import { ApiError, fetchAreas, fetchMarkers, fetchRecommendations } from '../api.ts'
+import type { Area, EnvChoice, MarkerItem, Place, Recommendation } from '../api.ts'
 import Controls from '../components/Controls.tsx'
 import EnvPicker from '../components/EnvPicker.tsx'
-import MapPlaceholder from '../components/MapPlaceholder.tsx'
+import KakaoMap from '../components/KakaoMap.tsx'
+import PlaceDetail from '../components/PlaceDetail.tsx'
 import PlaceList from '../components/PlaceList.tsx'
 import SidePanel from '../components/SidePanel.tsx'
 import WeatherCard from '../components/WeatherCard.tsx'
@@ -12,6 +13,16 @@ import { ENV_CHOICES, REGIONS, TYPES, dayOptions, moodOf } from '../labels.ts'
 
 const PAGE_SIZE = 12
 const DEFAULT_REGION = REGIONS[0].code
+const PANEL_KEY = 'galgot.panelCollapsed'
+
+/** 저장소를 쓸 수 없는 환경(사생활 보호 모드 등)에서도 화면은 그대로 동작해야 한다. */
+function readCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(PANEL_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 function messageOf(e: unknown): string {
   return e instanceof ApiError ? e.message : '알 수 없는 오류가 났어요. 잠시 뒤에 다시 시도해 주세요.'
@@ -34,6 +45,10 @@ function readType(v: string | null): number | null {
   return TYPES.find((t) => t.code !== null && String(t.code) === v)?.code ?? null
 }
 
+function readPlaceId(v: string | undefined): number | null {
+  return v !== undefined && /^\d{1,12}$/.test(v) ? Number(v) : null
+}
+
 interface Conditions {
   region: string
   area: string | null
@@ -42,20 +57,26 @@ interface Conditions {
 }
 
 /**
- * 지도 메인 화면. 지도(2단계에서 카카오 지도) 위에 왼쪽 목록 패널과 오른쪽 위 날씨 카드를 띄운다.
+ * 지도 메인 화면. 카카오 지도 위에 왼쪽 목록 패널과 오른쪽 위 날씨 카드를 띄운다.
  * 목록과 날씨는 항상 오늘 기준이다. 고른 조건(지역, 실내/실외, 종류)은 주소(?region=41&area=41820&env=INDOOR&type=14)에
  * 남겨 새로고침, 뒤로 가기, 공유 때 그대로 보인다.
+ * /places/:id 에서는 같은 화면에서 패널에 장소 상세를 열고 지도에서 그 장소를 강조한다(조건은 주소에 그대로 남는다).
  */
 export default function MainPage() {
   const [params, setParams] = useSearchParams()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const selectedId = readPlaceId(useParams().id)
   const region = readRegion(params.get('region'))
   const area = readArea(params.get('area'), region)
   const env = readEnv(params.get('env'))
   const type = readType(params.get('type'))
 
   const [today] = useState(() => dayOptions(new Date())[0])
+  const [collapsed, setCollapsed] = useState(readCollapsed)
   const [areas, setAreas] = useState<Area[]>([])
   const [reloadKey, setReloadKey] = useState(0)
+  const [markers, setMarkers] = useState<MarkerItem[]>([])
 
   const [data, setData] = useState<Recommendation | null>(null)
   const [places, setPlaces] = useState<Place[]>([])
@@ -66,6 +87,15 @@ export default function MainPage() {
   const [moreError, setMoreError] = useState<string | null>(null)
 
   const date = today.date
+
+  // 패널 접힘 상태를 이 브라우저에 기억한다
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(PANEL_KEY, collapsed ? '1' : '0')
+    } catch {
+      // 저장하지 못해도 이번 화면에서는 그대로 동작한다
+    }
+  }, [collapsed])
 
   /** 조건을 바꾸면 주소에 쓴다. 기본값(서울, 선택 없음)은 주소에서 뺀다. */
   function update(next: Partial<Conditions>) {
@@ -136,6 +166,21 @@ export default function MainPage() {
     }
   }, [region, area, date, type, env, reloadKey])
 
+  // 지도 마커는 목록과 같은 조건으로 페이지 없이 받는다. 실패하면 마커만 비우고 목록은 그대로 쓴다.
+  useEffect(() => {
+    let cancelled = false
+    fetchMarkers({ region, area, date, type, env })
+      .then((list) => {
+        if (!cancelled) setMarkers(list)
+      })
+      .catch(() => {
+        if (!cancelled) setMarkers([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [region, area, date, type, env, reloadKey])
+
   // 날씨에 따라 페이지 전체 분위기(배경색)를 바꾼다
   useEffect(() => {
     document.documentElement.dataset.mood = data ? moodOf(data.weather) : 'cloud'
@@ -157,11 +202,29 @@ export default function MainPage() {
 
   const hasMore = data !== null && page + 1 < data.places.totalPages
 
+  /** 목록 카드나 지도 마커를 고르면 /places/:id 로 간다. 조건(?...)은 그대로 둔다. */
+  const openPlace = useCallback(
+    (id: number) => navigate({ pathname: `/places/${id}`, search: location.search }),
+    [navigate, location.search],
+  )
+  const openPanel = useCallback(() => setCollapsed(false), [setCollapsed])
+  const backToList = () => navigate({ pathname: '/', search: location.search })
+
   return (
     <div className="stage">
-      <MapPlaceholder />
+      <KakaoMap
+        markers={markers}
+        selectedId={selectedId}
+        panelCollapsed={collapsed}
+        onSelect={openPlace}
+        onOpenPanel={openPanel}
+      />
 
-      <SidePanel title="관광지 목록">
+      <SidePanel title="관광지 목록" collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)}>
+        {selectedId !== null && <PlaceDetail id={selectedId} onBack={backToList} />}
+
+        {/* 상세를 보는 동안에도 목록은 숨겨 둔 채 유지한다(더 불러온 장소와 스크롤이 그대로 남게) */}
+        <div hidden={selectedId !== null}>
         <Controls
           region={region}
           onRegion={(code) => update({ region: code, area: null })}
@@ -195,9 +258,12 @@ export default function MainPage() {
               loadingMore={loadingMore}
               moreError={moreError}
               onMore={loadMore}
+              selectedId={selectedId}
+              onSelect={openPlace}
             />
           </div>
         )}
+        </div>
 
         <footer className="footer">날씨는 기상청 단기예보, 장소 정보는 한국관광공사 TourAPI 자료예요.</footer>
       </SidePanel>
