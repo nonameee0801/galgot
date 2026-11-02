@@ -410,7 +410,8 @@ export default function MainPage({ me, onLogin }: Props) {
           </div>
         )}
 
-        <footer className="footer">날씨는 기상청 단기예보, 장소 정보는 한국관광공사 TourAPI 자료예요.</footer>
+        {/* 출처는 장소 상세를 볼 때만 패널 맨 아래에 한 줄로 보인다(2026-11-03 결정) */}
+        {selectedId !== null && <footer className="footer">출처: 한국관광공사</footer>}
       </SidePanel>
 
       {/* 오른쪽 위 날씨 카드는 관광지 목록 탭(오늘 날씨)에서만. 날씨기반 추천 탭은 옆 날씨 패널이 대신한다 */}

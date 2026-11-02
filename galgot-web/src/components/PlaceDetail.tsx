@@ -120,9 +120,6 @@ function PlaceInfoSection({ id }: { id: number }) {
         </dl>
       )}
       {info.overview !== null && <Overview text={info.overview} />}
-      <p className="info-note">
-        정보는 바뀔 수 있어요. 방문 전에 문의처로 확인하세요. 출처: 한국관광공사 TourAPI
-      </p>
     </section>
   )
 }
@@ -173,7 +170,6 @@ export default function PlaceDetail({ id, onBack, onLoaded }: Props) {
             return src !== null && brokenImage !== p.id ? (
               <figure className="detail-photo">
                 <img src={src} alt={`${p.title} 사진`} onError={() => setBrokenImage(p.id)} />
-                <figcaption>사진: 한국관광공사 TourAPI</figcaption>
               </figure>
             ) : null
           })()}
