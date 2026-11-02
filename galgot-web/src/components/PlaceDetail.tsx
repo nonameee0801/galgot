@@ -7,6 +7,8 @@ import { ENV_LABEL, shortAddr, typeName } from '../labels'
 interface Props {
   id: number
   onBack: () => void
+  /** 장소 기본 정보를 불러오면 화면(MainPage)에 알린다. 지역 조건 맞추기와 지도 강조에 쓴다 */
+  onLoaded?: (place: Place) => void
 }
 
 type Result = { id: number; place: Place } | { id: number; error: string }
@@ -126,15 +128,21 @@ function PlaceInfoSection({ id }: { id: number }) {
 }
 
 /** 패널 안 장소 상세. 지도는 그대로 두고 왼쪽 패널만 바뀐다. 주소는 /places/:id 라서 새로고침과 공유가 된다. */
-export default function PlaceDetail({ id, onBack }: Props) {
+export default function PlaceDetail({ id, onBack, onLoaded }: Props) {
   const [result, setResult] = useState<Result | null>(null)
   const [brokenImage, setBrokenImage] = useState<number | null>(null)
+  const loadedRef = useRef(onLoaded)
+  useEffect(() => {
+    loadedRef.current = onLoaded
+  }, [onLoaded])
 
   useEffect(() => {
     let cancelled = false
     fetchPlace(id)
       .then((place) => {
-        if (!cancelled) setResult({ id, place })
+        if (cancelled) return
+        setResult({ id, place })
+        loadedRef.current?.(place)
       })
       .catch((e: unknown) => {
         if (!cancelled) {

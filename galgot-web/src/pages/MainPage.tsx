@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import { ApiError, fetchAreas, fetchMarkers, fetchRecommendations } from '../api.ts'
 import type { Area, EnvChoice, MarkerItem, Me, Place, Recommendation, TripDay } from '../api.ts'
@@ -70,6 +70,14 @@ function readStart(v: string | null, days: number, dayList: DayOption[]): string
   return startOptions(dayList, days).some((d) => d.date === v) ? (v as string) : dayList[0].date
 }
 
+/**
+ * 지도에 따로 그릴 수 있는 좌표인지(서울·경기 범위). 서버의 RecommendationService.inServiceArea와 같은 범위다.
+ * TourAPI에 좌표가 엉뚱하게 들어간 장소가 있어, 그런 장소는 지도에 따로 그리지 않는다.
+ */
+function inServiceArea(lat: number | null, lng: number | null): boolean {
+  return lat !== null && lng !== null && lat >= 36.8 && lat <= 38.4 && lng >= 126.0 && lng <= 128.2
+}
+
 type Conditions = TripConditions & { tab: 'list' | 'trip' }
 
 /** 날씨기반 추천 결과에 영향을 주는 조건. 이 중 하나가 바뀌면 결과의 시작 장소(sp)를 지운다. */
@@ -111,6 +119,8 @@ export default function MainPage({ me, onLogin }: Props) {
   const [markers, setMarkers] = useState<MarkerItem[]>([])
   const [route, setRoute] = useState<TripDay[] | null>(null)
   const [tripWeather, setTripWeather] = useState<TripWeatherInfo | null>(null)
+  // 상세로 연 장소의 기본 정보(지역 조건 맞추기와 지도 강조에 쓴다)
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null)
 
   const [data, setData] = useState<Recommendation | null>(null)
   const [places, setPlaces] = useState<Place[]>([])
@@ -174,9 +184,12 @@ export default function MainPage({ me, onLogin }: Props) {
     }
   }, [region])
 
-  // 주소에 목록에 없는 구·시군 코드가 들어 있으면 "전체"로 되돌린다
+  // 주소에 목록에 없는 구·시군 코드가 들어 있으면 "전체"로 되돌린다.
+  // 시도가 막 바뀐 순간에는 구·시군 목록이 아직 이전 시도의 것이므로, 목록이 지금 시도의 것일 때만 검사한다
+  // (지역 코드는 시도 코드로 시작한다. 예: 41150)
   useEffect(() => {
-    if (area === null || areas.length === 0 || areas.some((a) => a.code === area)) return
+    if (area === null || areas.length === 0 || !areas[0].code.startsWith(region)) return
+    if (areas.some((a) => a.code === area)) return
     setParams(
       (prev) => {
         const p = new URLSearchParams(prev)
@@ -186,7 +199,30 @@ export default function MainPage({ me, onLogin }: Props) {
       },
       { replace: true },
     )
-  }, [area, areas, setParams])
+  }, [area, areas, region, setParams])
+
+  /*
+   * 상세 주소를 바로 열었을 때(공유 링크, 즐겨찾기 등) 지역 조건이 장소와 다르면 장소에 맞춘다.
+   * - 관광지 목록 탭에서만. 날씨기반 추천 탭은 결과의 주변 지역 장소를 눌러도 결과가 유지돼야 하므로 바꾸지 않는다
+   * - 장소가 지금 조건 안이면 바꾸지 않는다(서울 전체를 보다가 종로구 장소를 열면 그대로 서울 전체)
+   * - 실내/실외와 테마는 사용자가 고른 것이라 바꾸지 않는다. 그 때문에 마커가 없으면 지도가 그 장소만 따로 그린다
+   * 주소 기록은 덮어써서 뒤로 가기가 꼬이지 않게 한다.
+   */
+  useEffect(() => {
+    if (tab !== 'list' || selectedId === null || selectedPlace === null || selectedPlace.id !== selectedId) return
+    const placeRegion = selectedPlace.ldongRegnCd
+    if (placeRegion === null || !REGIONS.some((r) => r.code === placeRegion)) return
+    const placeArea = selectedPlace.areaCode ?? null
+    const outside = placeRegion !== region || (area !== null && placeArea !== area)
+    if (outside) update({ region: placeRegion, area: placeArea }, { replace: true })
+  }, [tab, selectedId, selectedPlace, region, area, update])
+
+  // 지도에 따로 그릴 고른 장소(좌표가 서울·경기 범위 안일 때만)
+  const selectedMarker = useMemo<MarkerItem | null>(() => {
+    if (selectedPlace === null || selectedPlace.id !== selectedId) return null
+    const { id, title, lat, lng, env: placeEnv } = selectedPlace
+    return lat !== null && lng !== null && inServiceArea(lat, lng) ? { id, title, lat, lng, env: placeEnv } : null
+  }, [selectedPlace, selectedId])
 
   // 조건이 바뀔 때마다 첫 페이지부터 다시 불러온다
   useEffect(() => {
@@ -265,6 +301,7 @@ export default function MainPage({ me, onLogin }: Props) {
         route={tab === 'trip' ? route : null}
         insetLeft={showTripWeather ? 760 : 440}
         selectedId={selectedId}
+        selectedPlace={selectedMarker}
         panelCollapsed={collapsed}
         onSelect={openPlace}
         onOpenPanel={openPanel}
@@ -278,7 +315,7 @@ export default function MainPage({ me, onLogin }: Props) {
         collapsed={collapsed}
         onToggle={() => setCollapsed((c) => !c)}
       >
-        {selectedId !== null && <PlaceDetail id={selectedId} onBack={backToList} />}
+        {selectedId !== null && <PlaceDetail id={selectedId} onBack={backToList} onLoaded={setSelectedPlace} />}
 
         {/* 상세를 보는 동안에도 탭 내용은 숨겨 둔 채 유지한다(더 불러온 장소, 스크롤, 추천 결과가 그대로 남게) */}
         {tab === 'trip' ? (

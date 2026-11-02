@@ -11,6 +11,11 @@ interface Props {
   /** 넓은 화면에서 지도 범위를 맞출 때 왼쪽에 비울 폭(패널이 펼쳐져 있을 때). 기본 440 */
   insetLeft?: number
   selectedId: number | null
+  /**
+   * 고른 장소(좌표가 서울·경기 범위 안일 때). 실내/실외나 테마 조건 때문에 마커 목록에 없으면
+   * 이 정보로 그 장소 마커 하나를 따로 그려 강조한다(상세 주소를 바로 연 경우 등)
+   */
+  selectedPlace?: MarkerItem | null
   /** 패널이 접혀 있으면 마커를 골랐을 때 지도 위에 작은 정보창을 띄운다 */
   panelCollapsed: boolean
   onSelect: (id: number) => void
@@ -95,11 +100,22 @@ function infoElement(item: MarkerItem, onDetail: () => void): HTMLElement {
  * 날씨기반 추천 결과(route)가 있으면 그 코스만 일차별 번호 마커로 그리고, 일차마다 방문 순서대로 선을 잇는다
  * (실제 도로가 아니라 직선이다).
  */
-export default function KakaoMap({ markers, route, insetLeft = 440, selectedId, panelCollapsed, onSelect, onOpenPanel }: Props) {
+export default function KakaoMap({
+  markers,
+  route,
+  insetLeft = 440,
+  selectedId,
+  selectedPlace = null,
+  panelCollapsed,
+  onSelect,
+  onOpenPanel,
+}: Props) {
   const box = useRef<HTMLDivElement>(null)
   const mapRef = useRef<kakao.maps.Map | null>(null)
   const clustererRef = useRef<kakao.maps.MarkerClusterer | null>(null)
   const overlayRef = useRef<kakao.maps.CustomOverlay | null>(null)
+  // 마커 목록에 없는 고른 장소를 따로 그린 마커
+  const extraRef = useRef<kakao.maps.Marker | null>(null)
   const drawn = useRef(new Map<number, Drawn>())
   // 코스 표시용 마커와 선(묶음 표시 없이 지도에 바로 올린다)
   const routeShapes = useRef<{ setMap: (map: kakao.maps.Map | null) => void }[]>([])
@@ -135,6 +151,7 @@ export default function KakaoMap({ markers, route, insetLeft = 440, selectedId, 
       cancelled = true
       observer?.disconnect()
       overlayRef.current?.setMap(null)
+      extraRef.current?.setMap(null)
       clustererRef.current?.clear()
       routeShapes.current.forEach((s) => s.setMap(null))
       routeShapes.current = []
@@ -232,9 +249,24 @@ export default function KakaoMap({ markers, route, insetLeft = 440, selectedId, 
     }
     overlayRef.current?.setMap(null)
     overlayRef.current = null
+    extraRef.current?.setMap(null)
+    extraRef.current = null
     prevSelected.current = selectedId
 
-    const current = selectedId !== null ? drawn.current.get(selectedId) : undefined
+    let current = selectedId !== null ? drawn.current.get(selectedId) : undefined
+    // 조건(실내/실외, 테마) 때문에 마커 목록에 없으면 그 장소 마커만 따로 그린다
+    if (!current && selectedPlace !== null && selectedPlace.id === selectedId) {
+      const place = selectedPlace
+      const image = (selected: boolean) => markerImage(k, place.env, selected)
+      const marker = new k.maps.Marker({
+        position: new k.maps.LatLng(place.lat, place.lng),
+        image: image(true),
+        title: place.title,
+      })
+      marker.setMap(map)
+      extraRef.current = marker
+      current = { marker, item: place, image }
+    }
     if (!current) return
     current.marker.setImage(current.image(true))
     current.marker.setZIndex(10)
@@ -254,7 +286,7 @@ export default function KakaoMap({ markers, route, insetLeft = 440, selectedId, 
       overlay.setMap(map)
       overlayRef.current = overlay
     }
-  }, [selectedId, markers, route, status, panelCollapsed])
+  }, [selectedId, selectedPlace, markers, route, status, panelCollapsed])
 
   return (
     <>

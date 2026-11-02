@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 요청의 region(시도)과 area(구·시군)를 실제 지역으로 바꾼다.
@@ -47,6 +48,17 @@ public class AreaService {
     /** 지역에 속한 장소의 시군구 코드. 시도 전체면 빈 목록(시군구로 거르지 않음). */
     public List<String> signguCodes(Area area) {
         return area.isWholeRegion() ? List.of() : areaRepository.findSignguCodes(area.getCode());
+    }
+
+    /**
+     * 장소의 (시도, 시군구 코드)가 속한 구·시군 지역 코드(예: 의정부 150 → 41150, 수원 팔달구 115 → 41110).
+     * 코드가 비었거나 연결표에 없으면 빈 값(새로 생긴 시군구 코드 등).
+     */
+    public Optional<String> areaCodeOf(String ldongRegnCd, String ldongSignguCd) {
+        if (ldongRegnCd == null || ldongRegnCd.isBlank() || ldongSignguCd == null || ldongSignguCd.isBlank()) {
+            return Optional.empty();
+        }
+        return areaRepository.findAreaCodes(ldongRegnCd.trim(), ldongSignguCd.trim()).stream().findFirst();
     }
 
     private static ResponseStatusException badRequest(String message) {
