@@ -1,4 +1,6 @@
+import { Link } from 'react-router'
 import type { Me } from '../api'
+import { clearListSearch } from '../nav'
 
 interface Props {
   me: Me | null
@@ -10,7 +12,12 @@ interface Props {
 export default function Header({ me, onLogin, onLogout, onWithdraw }: Props) {
   return (
     <header className="site-header">
-      <h1 className="logo">갈곳</h1>
+      {/* 로고를 누르면 처음 화면으로. 기억해 둔 관광지 목록 조건도 지워 모두 초기값이 된다(기획서 18장 A) */}
+      <h1 className="logo">
+        <Link to="/" className="logo-link" onClick={clearListSearch}>
+          갈곳
+        </Link>
+      </h1>
       {me ? (
         <div className="user">
           <span>{me.nickname}님</span>
