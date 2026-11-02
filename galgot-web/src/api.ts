@@ -35,6 +35,8 @@ export interface Place {
   ldongRegnCd: string | null
   ldongSignguCd: string | null
   env: Env
+  /** 장소가 속한 구·시군 지역 코드. 상세(GET /api/places/{id})에서만 오고, 목록에서는 null */
+  areaCode?: string | null
 }
 
 export interface PageResponse<T> {
