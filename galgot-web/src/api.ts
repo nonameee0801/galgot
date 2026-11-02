@@ -172,6 +172,31 @@ export function fetchPlace(id: number): Promise<Place> {
   return request<Place>(`/api/places/${id}`, undefined, { 404: '장소를 찾을 수 없어요.' })
 }
 
+/** 장소 상세 정보(TourAPI 상세 API를 정리해 저장한 값). 값이 없는 항목은 null. */
+export interface PlaceInfo {
+  placeId: number
+  overview: string | null
+  useTime: string | null
+  restDate: string | null
+  useFee: string | null
+  parking: string | null
+  parkingFee: string | null
+  contact: string | null
+  /** http, https 주소만 */
+  homepages: string[]
+  openPeriod: string | null
+  reservation: string | null
+  fetchedAt: string
+}
+
+/** 장소 상세 정보. 처음 여는 장소는 서버가 TourAPI에서 받아 오느라 조금 걸린다. */
+export function fetchPlaceInfo(id: number): Promise<PlaceInfo> {
+  return request<PlaceInfo>(`/api/places/${id}/detail`, undefined, {
+    404: '장소를 찾을 수 없어요.',
+    503: '자세한 정보를 불러오지 못했어요. 잠시 뒤에 다시 시도해 주세요.',
+  })
+}
+
 /** 일차별 코스의 한 장소 */
 export interface TripStop {
   /** 그날 방문 순서(1부터) */

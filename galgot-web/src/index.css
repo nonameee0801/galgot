@@ -1007,13 +1007,80 @@ button {
   font-size: 0.9375rem;
 }
 
-.detail-link {
+/* 장소 상세 정보(17장): 이용 정보 목록, 소개(5줄 뒤 더 보기), 안내 문구 */
+.detail-info {
+  display: grid;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.detail-info-state {
+  margin: 10px 0 0;
+  font-size: 0.9375rem;
+}
+
+.info-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--soft);
+}
+
+.info-list > div {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 8px;
+}
+
+.info-list dt {
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.info-list dd {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font-size: 0.9375rem;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.info-link {
   display: inline-flex;
   align-items: center;
-  justify-self: start;
-  gap: 6px;
-  margin-top: 6px;
-  text-decoration: none;
+  gap: 4px;
+  color: var(--ink);
+}
+
+.detail-overview {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+}
+
+.overview-text {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.overview-text.is-clamped {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+}
+
+.info-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
 }
 
 .muted {
