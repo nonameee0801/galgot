@@ -132,4 +132,28 @@ class CourseTest {
         assertEquals(2, res.dayCount());
         assertEquals(0, CourseResponse.from(course()).dayCount());
     }
+
+    @Test
+    void 복사본은_장소와_일차_순서_메모를_그대로_옮기고_주인과_공유_코드는_새로_정한다() {
+        Course source = Course.create(1L, "가평군 1박2일 11/3", "41", java.time.LocalDate.of(2026, 11, 3), true);
+        add(source, 20L, "북한산", 2);
+        add(source, 10L, "경복궁", 1);
+        CoursePlace memo = source.addPlace(place("11", "국립중앙박물관"), 1, "오전에");
+        ReflectionTestUtils.setField(memo, "id", 11L);
+
+        Course copy = Course.copyOf(source, 2L);
+
+        assertEquals(2L, copy.getUserId());
+        assertEquals("가평군 1박2일 11/3", copy.getTitle());
+        assertEquals("41", copy.getLdongRegnCd());
+        assertEquals(source.getTravelDate(), copy.getTravelDate());
+        assertFalse(copy.getShareCode().equals(source.getShareCode()));
+        assertEquals(List.of("1:경복궁", "2:국립중앙박물관"), titlesOfDay(copy, 1));
+        assertEquals(List.of("1:북한산"), titlesOfDay(copy, 2));
+        assertEquals("오전에", copy.getPlaces().stream()
+                .filter(cp -> cp.getPlace().getTitle().equals("국립중앙박물관")).findFirst().orElseThrow().getMemo());
+        // 복사본의 항목은 원래 코스의 항목과 다른 객체다(따로 움직인다)
+        assertTrue(copy.getPlaces().stream().allMatch(cp -> cp.getCourse() == copy));
+        assertEquals(3, source.getPlaces().size());
+    }
 }

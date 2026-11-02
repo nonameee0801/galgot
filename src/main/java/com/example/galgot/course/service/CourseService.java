@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
  * 코스 관련 규칙.
  * - 내 코스만 수정, 삭제할 수 있다 (남의 코스는 403)
  * - 공유 링크(추측할 수 없는 UUID)를 아는 사람은 로그인 없이 코스를 볼 수 있다. 공개/비공개는 쓰지 않는다(2026-11-03 결정)
+ * - 공유받은 코스는 로그인한 사람이 내 코스로 복사해 저장할 수 있다
  */
 @Service
 @Transactional
@@ -120,6 +121,13 @@ public class CourseService {
     @Transactional(readOnly = true)
     public CourseDetailResponse getShared(String shareCode) {
         return CourseDetailResponse.from(findShared(shareCode));
+    }
+
+    /** 공유받은 코스를 내 코스로 복사해 저장한다(한 번의 저장으로 코스와 장소를 함께). 없는 링크는 404. */
+    public CourseDetailResponse copyShared(Long userId, String shareCode) {
+        Course copy = Course.copyOf(findShared(shareCode), userId);
+        courseRepository.saveAndFlush(copy);
+        return CourseDetailResponse.from(copy);
     }
 
     private Course findShared(String shareCode) {
