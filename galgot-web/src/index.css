@@ -105,6 +105,16 @@ button {
   letter-spacing: -0.03em;
 }
 
+.logo-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.logo-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
 .user {
   display: flex;
   align-items: center;
@@ -988,12 +998,6 @@ button {
   background: var(--soft);
 }
 
-.detail-photo figcaption {
-  margin-top: 4px;
-  color: var(--muted);
-  font-size: 0.75rem;
-}
-
 .detail-title {
   margin: 4px 0 0;
   font-family: var(--serif);
@@ -1075,12 +1079,6 @@ button {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 5;
   line-clamp: 5;
-}
-
-.info-note {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.8125rem;
 }
 
 .muted {

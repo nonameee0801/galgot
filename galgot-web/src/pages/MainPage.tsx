@@ -14,6 +14,7 @@ import TripWeatherPanel from '../components/TripWeatherPanel.tsx'
 import WeatherCard from '../components/WeatherCard.tsx'
 import { ENV_CHOICES, REGIONS, TYPES, dayOptions, moodOf, startOptions } from '../labels.ts'
 import type { DayOption } from '../labels.ts'
+import { loadListSearch, saveListSearch } from '../nav.ts'
 
 const PAGE_SIZE = 12
 const DEFAULT_REGION = REGIONS[0].code
@@ -116,6 +117,8 @@ export default function MainPage({ me, onLogin }: Props) {
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const [areas, setAreas] = useState<Area[]>([])
   const [reloadKey, setReloadKey] = useState(0)
+  // 날씨기반 추천 탭을 다시 열 때마다 바꿔, 탭 안에 남은 결과와 오류 문구까지 새로 시작한다
+  const [tripKey, setTripKey] = useState(0)
   const [markers, setMarkers] = useState<MarkerItem[]>([])
   const [route, setRoute] = useState<TripDay[] | null>(null)
   const [tripWeather, setTripWeather] = useState<TripWeatherInfo | null>(null)
@@ -140,6 +143,11 @@ export default function MainPage({ me, onLogin }: Props) {
       // 저장하지 못해도 이번 화면에서는 그대로 동작한다
     }
   }, [collapsed])
+
+  // 관광지 목록 탭의 조건을 기억해 두었다가, 날씨기반 추천 탭에 다녀와서 [관광지 목록]을 누르면 되살린다(기획서 18장 A)
+  useEffect(() => {
+    if (tab === 'list') saveListSearch(params)
+  }, [tab, params])
 
   /**
    * 조건을 바꾸면 주소에 쓴다. 기본값(서울, 선택 없음, 관광지 목록, 당일치기)은 주소에서 뺀다.
@@ -291,6 +299,25 @@ export default function MainPage({ me, onLogin }: Props) {
   )
   const openPanel = useCallback(() => setCollapsed(false), [setCollapsed])
   const backToList = () => navigate({ pathname: '/', search: location.search })
+
+  /**
+   * 패널 탭을 누르면 장소 상세를 닫고 그 탭 화면으로 간다(기획서 18장 A).
+   * - 관광지 목록: 마지막으로 설정했던 조건 그대로(지금 목록 탭이면 지금 주소, 아니면 기억한 조건)
+   * - 날씨기반 추천: 이미 이 탭이어도 조건과 결과를 지우고 초기값 입력 화면으로
+   */
+  function openTab(key: string) {
+    if (key === 'trip') {
+      setTripKey((k) => k + 1)
+      if (location.pathname !== '/' || location.search !== '?tab=trip') navigate({ pathname: '/', search: '?tab=trip' })
+      return
+    }
+    if (tab === 'list') {
+      if (selectedId !== null) backToList()
+      return
+    }
+    navigate({ pathname: '/', search: loadListSearch() })
+  }
+
   // 날씨기반 추천 탭에서는 왼쪽 패널 옆에 날씨 패널이 붙는다(왼쪽 패널을 접으면 함께 숨긴다)
   const showTripWeather = tab === 'trip' && tripWeather !== null && !collapsed
 
@@ -311,7 +338,7 @@ export default function MainPage({ me, onLogin }: Props) {
         title={tab === 'trip' ? '날씨기반 추천' : '관광지 목록'}
         tabs={TABS}
         tab={tab}
-        onTab={(key) => update({ tab: key === 'trip' ? 'trip' : 'list' })}
+        onTab={openTab}
         collapsed={collapsed}
         onToggle={() => setCollapsed((c) => !c)}
       >
@@ -321,6 +348,7 @@ export default function MainPage({ me, onLogin }: Props) {
         {tab === 'trip' ? (
           <div hidden={selectedId !== null}>
             <TripTab
+              key={tripKey}
               region={region}
               area={area}
               env={env}
@@ -382,7 +410,8 @@ export default function MainPage({ me, onLogin }: Props) {
           </div>
         )}
 
-        <footer className="footer">날씨는 기상청 단기예보, 장소 정보는 한국관광공사 TourAPI 자료예요.</footer>
+        {/* 출처는 장소 상세를 볼 때만 패널 맨 아래에 한 줄로 보인다(2026-11-03 결정) */}
+        {selectedId !== null && <footer className="footer">출처: 한국관광공사</footer>}
       </SidePanel>
 
       {/* 오른쪽 위 날씨 카드는 관광지 목록 탭(오늘 날씨)에서만. 날씨기반 추천 탭은 옆 날씨 패널이 대신한다 */}
