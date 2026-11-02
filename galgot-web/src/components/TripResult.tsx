@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { Sun, Umbrella } from 'lucide-react'
 import { ApiError, addCoursePlace, createCourse, deleteCourse } from '../api'
 import type { Me, Trip } from '../api'
@@ -17,7 +18,11 @@ interface Props {
   onEdit: () => void
 }
 
-type SaveState = { kind: 'idle' } | { kind: 'saving' } | { kind: 'saved'; title: string } | { kind: 'error'; message: string }
+type SaveState =
+  | { kind: 'idle' }
+  | { kind: 'saving' }
+  | { kind: 'saved'; title: string; courseId: number }
+  | { kind: 'error'; message: string }
 
 function shortDate(date: string): string {
   const [, m, d] = date.split('-')
@@ -59,7 +64,7 @@ export default function TripResult({ trip, me, onLogin, selectedId, onSelect, on
           await addCoursePlace(course.id, stop.place.id, d.dayNo)
         }
       }
-      setSave({ kind: 'saved', title })
+      setSave({ kind: 'saved', title, courseId: course.id })
     } catch (e) {
       if (courseId !== null) {
         await deleteCourse(courseId).catch(() => {
@@ -160,7 +165,14 @@ export default function TripResult({ trip, me, onLogin, selectedId, onSelect, on
         </button>
       </div>
       <p className="trip-foot" aria-live="polite">
-        {save.kind === 'saved' && `"${save.title}" 코스를 내 코스에 저장했어요(비공개).`}
+        {save.kind === 'saved' && (
+          <>
+            "{save.title}" 코스를 내 코스에 저장했어요(비공개).{' '}
+            <Link className="link-btn" to={`/my/courses/${save.courseId}`}>
+              내 코스에서 보기
+            </Link>
+          </>
+        )}
         {save.kind === 'error' && save.message}
         {save.kind === 'idle' && !me && '저장하려면 로그인이 필요해요.'}
       </p>

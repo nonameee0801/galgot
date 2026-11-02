@@ -89,9 +89,17 @@ public class CourseController {
         return courseService.reorder(CurrentUser.id(principal), id, request);
     }
 
-    /** 공유 링크로 보기. 로그인 없이 접근 가능(SecurityConfig에서 허용). */
+    /** 공유 링크로 보기. 로그인 없이 접근 가능(SecurityConfig에서 GET만 허용). */
     @GetMapping("/shared/{shareCode}")
     public CourseDetailResponse shared(@PathVariable("shareCode") String shareCode) {
         return courseService.getShared(shareCode);
+    }
+
+    /** 공유받은 코스를 내 코스로 저장(복사). 로그인 필요. */
+    @PostMapping("/shared/{shareCode}/copy")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CourseDetailResponse copyShared(@AuthenticationPrincipal OAuth2User principal,
+                                           @PathVariable("shareCode") String shareCode) {
+        return courseService.copyShared(CurrentUser.id(principal), shareCode);
     }
 }

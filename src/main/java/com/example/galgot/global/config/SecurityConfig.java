@@ -54,7 +54,9 @@ public class SecurityConfig {
                 // 아래 CORS(허용 출처 1곳)에 기대고 있다. 프론트와 백엔드를 서로 다른 도메인에 배포할 때 다시 점검할 것.
                 .csrf(csrf -> csrf.ignoringRequestMatchers(apiRequests))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/places/**", "/api/courses/shared/**",
+                        // 공유 코스는 보기(GET)만 로그인 없이 연다. 내 코스로 저장(POST .../copy)은 로그인 필요
+                        .requestMatchers(HttpMethod.GET, "/api/courses/shared/**").permitAll()
+                        .requestMatchers("/api/places/**",
                                 "/api/weather/**", "/api/recommendations/**", "/api/areas/**",
                                 "/api/auth/signup", "/api/auth/login", "/error").permitAll()
                         .anyRequest().authenticated())
