@@ -289,6 +289,109 @@ export function deleteCourse(courseId: number): Promise<void> {
   return request<void>(`/api/courses/${courseId}`, { method: 'DELETE' })
 }
 
+/** 마이페이지의 코스 카드(담긴 장소는 없고 개수만) */
+export interface CourseSummary {
+  id: number
+  title: string
+  ldongRegnCd: string | null
+  /** 여행 날짜(1일차). 없을 수 있다 */
+  travelDate: string | null
+  publicCourse: boolean
+  shareCode: string
+  createdAt: string
+  placeCount: number
+  dayCount: number
+}
+
+/** 코스에 담긴 장소 한 건 */
+export interface CoursePlaceItem {
+  /** 코스 안 항목 id(장소 id와 다르다) */
+  id: number
+  dayNo: number
+  visitOrder: number
+  memo: string | null
+  place: Place
+}
+
+/** 코스 상세. places는 일차, 방문 순서대로 온다 */
+export interface CourseDetail {
+  id: number
+  title: string
+  ldongRegnCd: string | null
+  travelDate: string | null
+  publicCourse: boolean
+  shareCode: string
+  createdAt: string
+  places: CoursePlaceItem[]
+}
+
+const COURSE_MESSAGES: Messages = {
+  403: '내 코스가 아니에요.',
+  404: '코스를 찾을 수 없어요.',
+}
+
+/** 내 코스 목록(최근에 만든 순). 로그인하지 않았으면 401 */
+export function fetchCourses(): Promise<CourseSummary[]> {
+  return request<CourseSummary[]>('/api/courses')
+}
+
+export function fetchCourse(courseId: number): Promise<CourseDetail> {
+  return request<CourseDetail>(`/api/courses/${courseId}`, undefined, COURSE_MESSAGES)
+}
+
+/** 이름, 여행 날짜, 공개 여부를 한 번에 바꾼다(서버는 셋을 모두 받는다) */
+export function updateCourse(
+  course: Pick<CourseDetail, 'id' | 'title' | 'ldongRegnCd' | 'travelDate' | 'publicCourse'>,
+): Promise<CourseDetail> {
+  return request<CourseDetail>(
+    `/api/courses/${course.id}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: course.title,
+        ldongRegnCd: course.ldongRegnCd,
+        travelDate: course.travelDate,
+        publicCourse: course.publicCourse,
+      }),
+    },
+    { ...COURSE_MESSAGES, 400: '코스 이름을 1~100자로 적어 주세요.' },
+  )
+}
+
+/** 코스에서 장소 빼기. 서버가 그 일차의 남은 순서를 1부터 다시 매긴다 */
+export function removeCoursePlace(courseId: number, coursePlaceId: number): Promise<void> {
+  return request<void>(`/api/courses/${courseId}/places/${coursePlaceId}`, { method: 'DELETE' }, COURSE_MESSAGES)
+}
+
+/** 방문 순서 바꾸기. 바뀌는 항목만 보낸다 */
+export function reorderCourse(
+  courseId: number,
+  items: { coursePlaceId: number; dayNo: number; visitOrder: number }[],
+): Promise<CourseDetail> {
+  return request<CourseDetail>(
+    `/api/courses/${courseId}/places/order`,
+    { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }) },
+    COURSE_MESSAGES,
+  )
+}
+
+/** 공유 링크로 코스 보기(로그인 불필요). 없는 링크면 404 */
+export function fetchSharedCourse(shareCode: string): Promise<CourseDetail> {
+  return request<CourseDetail>(`/api/courses/shared/${encodeURIComponent(shareCode)}`, undefined, {
+    404: '코스를 찾을 수 없어요. 링크가 맞는지, 코스가 지워지지 않았는지 확인해 주세요.',
+  })
+}
+
+/** 공유받은 코스를 내 코스로 저장(복사본을 만든다). 로그인 필요 */
+export function copySharedCourse(shareCode: string): Promise<CourseDetail> {
+  return request<CourseDetail>(
+    `/api/courses/shared/${encodeURIComponent(shareCode)}/copy`,
+    { method: 'POST' },
+    { 404: '코스를 찾을 수 없어요.' },
+  )
+}
+
 /** 시도 안의 구·시군 목록(가나다순). */
 export function fetchAreas(region: string): Promise<Area[]> {
   return request<Area[]>(`/api/areas?region=${encodeURIComponent(region)}`)

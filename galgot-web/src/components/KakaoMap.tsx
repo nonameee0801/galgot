@@ -1,13 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Env, MarkerItem, TripDay } from '../api'
+import type { Env, MarkerItem, Place } from '../api'
 import { hasKakaoKey, loadKakaoMaps } from '../kakao/loadKakaoMaps'
 import { DAY_STYLES, ENV_LABEL } from '../labels'
 import MapPlaceholder from './MapPlaceholder'
 
+/**
+ * 지도에 일차별 번호 마커와 방문 순서 선으로 그릴 코스. 날씨기반 추천 결과(TripDay)와 저장한 코스(지도 팝업)가 함께 쓴다.
+ */
+export interface RouteDay {
+  dayNo: number
+  places: { order: number; place: Place }[]
+}
+
 interface Props {
   markers: MarkerItem[]
-  /** 날씨기반 추천 결과. 있으면 묶음 마커 대신 일차별 번호 마커와 방문 순서 선을 그린다 */
-  route: TripDay[] | null
+  /** 날씨기반 추천 결과나 저장한 코스. 있으면 묶음 마커 대신 일차별 번호 마커와 방문 순서 선을 그린다 */
+  route: RouteDay[] | null
   /** 넓은 화면에서 지도 범위를 맞출 때 왼쪽에 비울 폭(패널이 펼쳐져 있을 때). 기본 440 */
   insetLeft?: number
   selectedId: number | null

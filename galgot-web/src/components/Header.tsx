@@ -6,10 +6,10 @@ interface Props {
   me: Me | null
   onLogin: () => void
   onLogout: () => void
-  onWithdraw: () => void
 }
 
-export default function Header({ me, onLogin, onLogout, onWithdraw }: Props) {
+/** 머리줄. 로그인하면 닉네임이 마이페이지(/my) 링크가 된다. 회원 탈퇴는 마이페이지로 옮겼다(기획서 18장 E). */
+export default function Header({ me, onLogin, onLogout }: Props) {
   return (
     <header className="site-header">
       {/* 로고를 누르면 처음 화면으로. 기억해 둔 관광지 목록 조건도 지워 모두 초기값이 된다(기획서 18장 A) */}
@@ -20,12 +20,11 @@ export default function Header({ me, onLogin, onLogout, onWithdraw }: Props) {
       </h1>
       {me ? (
         <div className="user">
-          <span>{me.nickname}님</span>
+          <Link to="/my" className="user-link" title="마이페이지">
+            {me.nickname}님
+          </Link>
           <button type="button" className="btn-line" onClick={onLogout}>
             로그아웃
-          </button>
-          <button type="button" className="link-btn" onClick={onWithdraw}>
-            회원 탈퇴
           </button>
         </div>
       ) : (
