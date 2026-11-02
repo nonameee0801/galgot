@@ -33,8 +33,8 @@ public class WeatherService {
 
     private static final Logger log = LoggerFactory.getLogger(WeatherService.class);
     static final ZoneId ZONE = ZoneId.of("Asia/Seoul");
-    /** 단기예보는 오늘부터 약 3일 뒤까지 제공된다. */
-    static final int MAX_DAYS_AHEAD = 3;
+    /** 단기예보는 오늘부터 약 3일 뒤까지 제공된다. 일차별 추천(TripRecommendationService)의 출발일 범위도 이 값으로 정한다. */
+    public static final int MAX_DAYS_AHEAD = 3;
 
     private final KmaClient kmaClient;
     private final WeatherForecastRepository repository;
