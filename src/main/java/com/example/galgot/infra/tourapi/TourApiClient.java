@@ -38,17 +38,43 @@ public class TourApiClient {
 
     /** 지역(법정동 시도 코드) + 콘텐츠 유형으로 장소 목록을 한 페이지 조회한다. */
     public TourPage fetchAreaBasedList(String ldongRegnCd, int contentTypeId, int pageNo, int numOfRows) {
+        Map<String, Object> body = call("/areaBasedList2", "&numOfRows=" + numOfRows
+                + "&pageNo=" + pageNo
+                + "&lDongRegnCd=" + ldongRegnCd
+                + "&contentTypeId=" + contentTypeId);
+        int totalCount = toInt(body.get("totalCount"));
+
+        List<TourPlaceItem> items = new ArrayList<>();
+        for (Map<String, Object> raw : extractItems(body.get("items"))) {
+            TourPlaceItem item = toItem(raw);
+            if (item != null) {
+                items.add(item);
+            }
+        }
+        return new TourPage(totalCount, items);
+    }
+
+    /**
+     * 장소 하나의 상세 정보. 공통 정보(detailCommon2)와 유형별 소개(detailIntro2)를 차례로 불러 정리한다(호출 2번).
+     * 유형별 소개가 없는 장소도 있다(그때는 공통 정보만 정리된다).
+     */
+    public TourDetailItem fetchDetail(String contentId, int contentTypeId) {
+        String id = URLEncoder.encode(contentId, StandardCharsets.UTF_8);
+        Map<String, Object> common = firstItem(call("/detailCommon2", "&contentId=" + id));
+        Map<String, Object> intro = firstItem(call("/detailIntro2", "&contentId=" + id + "&contentTypeId=" + contentTypeId));
+        return TourDetailParser.parse(common, intro);
+    }
+
+    /** TourAPI 한 번 호출. 성공 코드(0000)가 아니면 TourApiException. 응답의 body를 돌려준다. */
+    private Map<String, Object> call(String path, String params) {
         if (serviceKey == null || serviceKey.isBlank()) {
             throw new TourApiException("TOURAPI_SERVICE_KEY 환경 변수가 비어 있습니다.");
         }
 
-        URI uri = URI.create(baseUrl + "/areaBasedList2"
+        URI uri = URI.create(baseUrl + path
                 + "?serviceKey=" + encodeKey(serviceKey)
                 + "&MobileOS=ETC&MobileApp=galgot&_type=json"
-                + "&numOfRows=" + numOfRows
-                + "&pageNo=" + pageNo
-                + "&lDongRegnCd=" + ldongRegnCd
-                + "&contentTypeId=" + contentTypeId);
+                + params);
 
         Map<String, Object> root;
         try {
@@ -69,17 +95,13 @@ public class TourApiClient {
                     + ", resultMsg=" + str(header.get("resultMsg")));
         }
 
-        Map<String, Object> body = asMap(response.get("body"));
-        int totalCount = toInt(body.get("totalCount"));
+        return asMap(response.get("body"));
+    }
 
-        List<TourPlaceItem> items = new ArrayList<>();
-        for (Map<String, Object> raw : extractItems(body.get("items"))) {
-            TourPlaceItem item = toItem(raw);
-            if (item != null) {
-                items.add(item);
-            }
-        }
-        return new TourPage(totalCount, items);
+    /** 상세 API의 item은 하나다. 없으면 빈 Map. */
+    private static Map<String, Object> firstItem(Map<String, Object> body) {
+        List<Map<String, Object>> items = extractItems(body.get("items"));
+        return items.isEmpty() ? Collections.emptyMap() : items.get(0);
     }
 
     /** 인증키가 이미 인코딩된 값(%포함)이면 그대로, 디코딩된 값이면 인코딩해서 쓴다. */
