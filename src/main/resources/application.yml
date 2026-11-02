@@ -64,6 +64,11 @@ collect:
 classify:
   run-on-startup: ${CLASSIFY_RUN_ON_STARTUP:false}
 
+# 날씨기반 일차별 코스 추천: 하루에 추천할 장소 수(사용자가 고르지 않는다)
+recommend:
+  course:
+    places-per-day: 4
+
 server:
   servlet:
     session:

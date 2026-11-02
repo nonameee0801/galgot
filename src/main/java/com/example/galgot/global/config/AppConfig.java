@@ -7,7 +7,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
-@EnableConfigurationProperties({CollectProperties.class, WeatherRuleProperties.class})
+@EnableConfigurationProperties({CollectProperties.class, WeatherRuleProperties.class, RecommendCourseProperties.class})
 public class AppConfig {
 
     /** 비밀번호는 BCrypt 해시로만 저장한다. */

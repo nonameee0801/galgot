@@ -95,6 +95,29 @@ export function shortAddr(addr: string | null): string {
   return addr.replace(/^(서울특별시|경기도)\s*/, '')
 }
 
+/** 날씨기반 추천의 일정 길이. 날씨 예보가 3일 뒤까지라 2박3일까지만 둔다. */
+export const TRIP_LENGTHS: { days: number; name: string }[] = [
+  { days: 1, name: '당일치기' },
+  { days: 2, name: '1박2일' },
+  { days: 3, name: '2박3일' },
+]
+
+export function tripLengthName(days: number): string {
+  return TRIP_LENGTHS.find((t) => t.days === days)?.name ?? `${days}일`
+}
+
+/** 일정의 마지막 날까지 예보가 있는 출발일만. 당일치기는 오늘~3일 뒤, 1박2일은 ~2일 뒤, 2박3일은 ~1일 뒤. */
+export function startOptions(all: DayOption[], days: number): DayOption[] {
+  return all.slice(0, Math.max(1, all.length - (days - 1)))
+}
+
+/** 일차별 지도 색. 색만으로 나누지 않도록 선 모양(실선, 긴 점선, 점선)도 함께 바꾼다. */
+export const DAY_STYLES: { color: string; line: 'solid' | 'shortdash' | 'shortdot' }[] = [
+  { color: '#c2410c', line: 'solid' },
+  { color: '#1d4ed8', line: 'shortdash' },
+  { color: '#047857', line: 'shortdot' },
+]
+
 /**
  * 좌표가 서울·경기 범위 안인지. 서버의 RecommendationService.inServiceArea와 같은 범위다.
  * TourAPI에 좌표가 엉뚱하게 들어간 장소가 있어, 그런 장소는 "카카오맵에서 보기"를 숨긴다.

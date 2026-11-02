@@ -84,8 +84,9 @@ export default function App() {
       )}
 
       <Routes>
-        <Route path="/" element={<MainPage />} />
-        <Route path="/places/:id" element={<MainPage />} />
+        {/* 날씨기반 추천의 "내 코스에 저장"에 로그인 상태와 로그인 창이 필요하다 */}
+        <Route path="/" element={<MainPage me={me} onLogin={() => setModal('auth')} />} />
+        <Route path="/places/:id" element={<MainPage me={me} onLogin={() => setModal('auth')} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 

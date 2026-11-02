@@ -3,8 +3,10 @@ package com.example.galgot.recommend.controller;
 import com.example.galgot.area.service.AreaService;
 import com.example.galgot.recommend.dto.MarkerResponse;
 import com.example.galgot.recommend.dto.RecommendationResponse;
+import com.example.galgot.recommend.dto.TripRecommendationResponse;
 import com.example.galgot.recommend.service.EnvPreference;
 import com.example.galgot.recommend.service.RecommendationService;
+import com.example.galgot.recommend.service.TripRecommendationService;
 import com.example.galgot.weather.service.WeatherService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,10 +28,14 @@ import java.util.List;
 public class RecommendationController {
 
     private final RecommendationService recommendationService;
+    private final TripRecommendationService tripRecommendationService;
     private final AreaService areaService;
 
-    public RecommendationController(RecommendationService recommendationService, AreaService areaService) {
+    public RecommendationController(RecommendationService recommendationService,
+                                    TripRecommendationService tripRecommendationService,
+                                    AreaService areaService) {
         this.recommendationService = recommendationService;
+        this.tripRecommendationService = tripRecommendationService;
         this.areaService = areaService;
     }
 
@@ -59,5 +65,27 @@ public class RecommendationController {
             @RequestParam(name = "env", required = false) EnvPreference.Choice env) {
         LocalDate target = date != null ? date : WeatherService.today();
         return recommendationService.markers(areaService.resolve(region, area), target, type, env);
+    }
+
+    /**
+     * GET /api/recommendations/trip?region=41&area=41820&start=2026-11-03&days=2&env=INDOOR&type=14
+     * 날씨기반 일차별 코스. 일차마다 그날 날씨로 판정하고 하루 4곳(설정)을 방문 순서대로 돌려준다. 로그인 없이 조회.
+     * start(기본 오늘), days(1~3, 기본 1), env(생략하면 일차마다 그날 추천대로), type은 생략 가능.
+     * 서울은 area 없이, 경기는 area를 꼭 넣는다(아니면 400).
+     * startPlaceId: 주소로 다시 들어올 때 같은 코스를 만든다. excludeStartPlaceId: 다른 추천 받기 때 지금 시작 장소를 뺀다.
+     */
+    @GetMapping("/trip")
+    public TripRecommendationResponse trip(
+            @RequestParam(name = "region", defaultValue = "11") String region,
+            @RequestParam(name = "area", required = false) String area,
+            @RequestParam(name = "start", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+            @RequestParam(name = "days", defaultValue = "1") int days,
+            @RequestParam(name = "type", required = false) Integer type,
+            @RequestParam(name = "env", required = false) EnvPreference.Choice env,
+            @RequestParam(name = "startPlaceId", required = false) Long startPlaceId,
+            @RequestParam(name = "excludeStartPlaceId", required = false) Long excludeStartPlaceId) {
+        LocalDate target = start != null ? start : WeatherService.today();
+        return tripRecommendationService.recommend(region, area, target, days, type, env,
+                startPlaceId, excludeStartPlaceId);
     }
 }
