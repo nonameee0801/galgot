@@ -172,6 +172,90 @@ export function fetchPlace(id: number): Promise<Place> {
   return request<Place>(`/api/places/${id}`, undefined, { 404: '장소를 찾을 수 없어요.' })
 }
 
+/** 일차별 코스의 한 장소 */
+export interface TripStop {
+  /** 그날 방문 순서(1부터) */
+  order: number
+  /** 고른 지역이 아니라 주변 지역에서 채운 장소 */
+  nearby: boolean
+  place: Place
+}
+
+export interface TripDay {
+  dayNo: number
+  date: string
+  weather: Weather
+  outdoorSuitable: boolean
+  /** 그날 판정에 따른 추천: 적합하면 OUTDOOR, 부적합하면 INDOOR */
+  recommendedEnv: Env
+  reasons: string[]
+  message: string
+  places: TripStop[]
+  /** 장소가 모자라거나 주변 지역에서 채웠을 때의 안내 */
+  notice: string | null
+}
+
+/** 날씨기반 일차별 코스 추천 결과 */
+export interface Trip {
+  region: string
+  area: string
+  areaName: string
+  start: string
+  dayCount: number
+  env: EnvChoice | null
+  /** 1일차 첫 장소. 주소에 남겨 같은 코스를 다시 만든다. 장소가 하나도 없으면 null */
+  startPlaceId: number | null
+  /** false면 다른 시작 장소가 없어 "다른 추천 받기"를 숨긴다 */
+  rerollAvailable: boolean
+  days: TripDay[]
+}
+
+export interface TripQuery {
+  region: string
+  /** 서울은 null(서울 전체), 경기는 시·군 코드 */
+  area: string | null
+  start: string
+  days: number
+  /** null이면 일차마다 그날 추천대로 */
+  env: EnvChoice | null
+  type: number | null
+  startPlaceId: number | null
+  excludeStartPlaceId: number | null
+}
+
+/** 날씨기반 일차별 코스. 경기는 시·군을 꼭 넣고, 서울은 area 없이 부른다. */
+export function fetchTrip(q: TripQuery): Promise<Trip> {
+  const params = new URLSearchParams({ region: q.region, start: q.start, days: String(q.days) })
+  if (q.area !== null) params.set('area', q.area)
+  if (q.env !== null) params.set('env', q.env)
+  if (q.type !== null) params.set('type', String(q.type))
+  if (q.startPlaceId !== null) params.set('startPlaceId', String(q.startPlaceId))
+  if (q.excludeStartPlaceId !== null) params.set('excludeStartPlaceId', String(q.excludeStartPlaceId))
+  return request<Trip>(`/api/recommendations/trip?${params.toString()}`, undefined, {
+    400: '이 조건으로는 코스를 만들 수 없어요. 출발일이나 지역을 바꿔 보세요.',
+  })
+}
+
+/** 만든 코스(필요한 값만) */
+export interface CourseCreated {
+  id: number
+  title: string
+}
+
+/** 내 코스 만들기. 처음에는 비공개로 만든다. */
+export function createCourse(title: string, ldongRegnCd: string, travelDate: string): Promise<CourseCreated> {
+  return postJson<CourseCreated>('/api/courses', { title, ldongRegnCd, travelDate, publicCourse: false })
+}
+
+/** 코스에 장소 담기(담는 순서가 그날 방문 순서가 된다). */
+export function addCoursePlace(courseId: number, placeId: number, dayNo: number): Promise<void> {
+  return postJson<void>(`/api/courses/${courseId}/places`, { placeId, dayNo })
+}
+
+export function deleteCourse(courseId: number): Promise<void> {
+  return request<void>(`/api/courses/${courseId}`, { method: 'DELETE' })
+}
+
 /** 시도 안의 구·시군 목록(가나다순). */
 export function fetchAreas(region: string): Promise<Area[]> {
   return request<Area[]>(`/api/areas?region=${encodeURIComponent(region)}`)

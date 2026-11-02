@@ -72,6 +72,23 @@ declare namespace kakao.maps {
     setMap(map: Map | null): void
   }
 
+  interface PolylineOptions {
+    map?: Map
+    path: LatLng[]
+    strokeWeight?: number
+    strokeColor?: string
+    strokeOpacity?: number
+    /** solid, shortdash, shortdot 등 */
+    strokeStyle?: string
+    zIndex?: number
+  }
+
+  /** 일차별 방문 순서를 잇는 선 */
+  class Polyline {
+    constructor(options: PolylineOptions)
+    setMap(map: Map | null): void
+  }
+
   interface MarkerClustererOptions {
     map: Map
     averageCenter?: boolean

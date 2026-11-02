@@ -9,19 +9,27 @@ interface Props {
   areas: Area[]
   area: string | null
   onArea: (code: string | null) => void
+  /**
+   * trip: 날씨기반 추천 탭. 서울은 구를 고르지 않고 서울 전체로 짜므로 구 버튼을 숨기고,
+   * 경기는 시·군을 꼭 골라야 해서 "전체"를 빼고 처음에 펼쳐 둔다.
+   */
+  mode?: 'list' | 'trip'
 }
 
 /**
  * 지역(시도, 구·시군)을 고르는 줄. 날짜는 고르지 않고 항상 오늘 기준이다(다른 날짜는 날씨기반 추천에서 고른다).
  * 구·시군은 "종로구 ▾" 버튼을 눌러 펼치는 버튼 격자에서 고르고, 고르면 다시 접힌다.
  */
-export default function Controls({ region, onRegion, areas, area, onArea }: Props) {
-  const [open, setOpen] = useState(false)
+export default function Controls({ region, onRegion, areas, area, onArea, mode = 'list' }: Props) {
+  const trip = mode === 'trip'
+  const [open, setOpen] = useState(trip && area === null)
   const unit = region === '11' ? '구' : '시·군'
-  const current = areas.find((a) => a.code === area)?.name ?? '전체'
+  const current = areas.find((a) => a.code === area)?.name ?? (trip ? `${unit} 고르기` : '전체')
+  const hideArea = trip && region === '11'
 
   function pickRegion(code: string) {
-    setOpen(false)
+    // 추천 탭에서 경기로 바꾸면 시·군을 바로 고를 수 있게 펼친다
+    setOpen(trip && code !== '11')
     onRegion(code)
   }
 
@@ -67,6 +75,7 @@ export default function Controls({ region, onRegion, areas, area, onArea }: Prop
       </div>
 
       {/* 버튼 나열식: 펼치기 버튼 + 구·시군 버튼 격자 */}
+      {!hideArea && (
       <button
         type="button"
         className="area-toggle"
@@ -79,11 +88,14 @@ export default function Controls({ region, onRegion, areas, area, onArea }: Prop
         <strong>{current}</strong>
         <ChevronDown size={18} aria-hidden="true" />
       </button>
-      {open && (
+      )}
+      {open && !hideArea && (
         <div className="area-grid" id="area-grid" role="group" aria-label={`${unit} 선택`}>
-          <button type="button" className="area-chip" aria-pressed={area === null} onClick={() => pickArea(null)}>
-            전체
-          </button>
+          {!trip && (
+            <button type="button" className="area-chip" aria-pressed={area === null} onClick={() => pickArea(null)}>
+              전체
+            </button>
+          )}
           {areas.map((a) => (
             <button
               key={a.code}
