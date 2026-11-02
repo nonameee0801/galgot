@@ -6,8 +6,8 @@
  */
 const LIST_KEY = 'galgot.listSearch'
 
-/** 관광지 목록 탭의 조건으로 기억할 주소 값 */
-const LIST_PARAMS = ['region', 'area', 'env', 'type']
+/** 관광지 목록 탭의 조건으로 기억할 주소 값(q는 장소 이름 검색어) */
+const LIST_PARAMS = ['region', 'area', 'env', 'type', 'q']
 
 /** 주소의 조건 중 관광지 목록 탭의 것만 골라 기억한다. 탭, 날씨기반 추천 조건은 뺀다. */
 export function saveListSearch(params: URLSearchParams): void {

@@ -16,6 +16,11 @@ interface Props {
    * 이 정보로 그 장소 마커 하나를 따로 그려 강조한다(상세 주소를 바로 연 경우 등)
    */
   selectedPlace?: MarkerItem | null
+  /**
+   * 장소 이름 검색 결과의 첫 장소. 있으면 마커 전체가 보이게 맞추는 대신 이 장소 주변으로 옮긴다
+   * (검색 결과가 서울과 경기 여러 곳에 흩어져도 찾던 장소를 바로 보이게, 기획서 18장 B)
+   */
+  focus?: { lat: number; lng: number } | null
   /** 패널이 접혀 있으면 마커를 골랐을 때 지도 위에 작은 정보창을 띄운다 */
   panelCollapsed: boolean
   onSelect: (id: number) => void
@@ -106,6 +111,7 @@ export default function KakaoMap({
   insetLeft = 440,
   selectedId,
   selectedPlace = null,
+  focus = null,
   panelCollapsed,
   onSelect,
   onOpenPanel,
@@ -224,17 +230,23 @@ export default function KakaoMap({
       clusterer.addMarkers(list)
     }
 
-    if (!bounds.isEmpty() && box.current) {
+    // 검색 중이면 첫 결과 주변(위아래, 좌우 약 1km)으로 범위를 좁혀, 패널에 가리지 않는 자리의 가운데에 오게 한다
+    const target = focus !== null && route === null ? new k.maps.LatLngBounds() : bounds
+    if (focus !== null && route === null) {
+      target.extend(new k.maps.LatLng(focus.lat - 0.01, focus.lng - 0.012))
+      target.extend(new k.maps.LatLng(focus.lat + 0.01, focus.lng + 0.012))
+    }
+    if (!target.isEmpty() && box.current) {
       const narrow = box.current.clientWidth < 768
       // 좁은 화면에서는 위쪽에 날씨 카드나 날씨 패널이 뜬다
       const top = narrow ? 160 : 60
       const bottom = narrow && !panelCollapsed ? Math.round(box.current.clientHeight * 0.6) + 20 : 40
       const left = !narrow && !panelCollapsed ? insetLeft : 40
-      map.setBounds(bounds, top, 40, bottom, left)
+      map.setBounds(target, top, 40, bottom, left)
     }
-    // 범위는 마커가 바뀔 때만 다시 맞춘다(패널을 접고 펼 때마다 지도가 움직이지 않게)
+    // 범위는 마커나 검색 첫 장소가 바뀔 때만 다시 맞춘다(패널을 접고 펼 때마다 지도가 움직이지 않게)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markers, route, status])
+  }, [markers, route, status, focus])
 
   // 3) 고른 장소 강조, 이동, 패널이 접혀 있으면 정보창
   useEffect(() => {

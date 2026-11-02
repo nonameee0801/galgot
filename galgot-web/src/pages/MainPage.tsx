@@ -7,6 +7,7 @@ import EnvPicker from '../components/EnvPicker.tsx'
 import KakaoMap from '../components/KakaoMap.tsx'
 import PlaceDetail from '../components/PlaceDetail.tsx'
 import PlaceList from '../components/PlaceList.tsx'
+import SearchBox from '../components/SearchBox.tsx'
 import SidePanel from '../components/SidePanel.tsx'
 import TripTab from '../components/TripTab.tsx'
 import type { TripConditions, TripWeatherInfo } from '../components/TripTab.tsx'
@@ -66,6 +67,12 @@ function readDays(v: string | null): number {
   return v === '2' || v === '3' ? Number(v) : 1
 }
 
+/** 장소 이름 검색어. 공백을 정리하고 50자까지(서버 KeywordSearch와 같은 규칙), 비면 검색 아님. */
+function readKeyword(v: string | null): string | null {
+  const s = (v ?? '').trim().replace(/\s+/g, ' ').slice(0, 50).trim()
+  return s === '' ? null : s
+}
+
 /** 일정의 마지막 날까지 예보가 있는 출발일만 받는다. 아니면 오늘. */
 function readStart(v: string | null, days: number, dayList: DayOption[]): string {
   return startOptions(dayList, days).some((d) => d.date === v) ? (v as string) : dayList[0].date
@@ -79,7 +86,7 @@ function inServiceArea(lat: number | null, lng: number | null): boolean {
   return lat !== null && lng !== null && lat >= 36.8 && lat <= 38.4 && lng >= 126.0 && lng <= 128.2
 }
 
-type Conditions = TripConditions & { tab: 'list' | 'trip' }
+type Conditions = TripConditions & { tab: 'list' | 'trip'; q: string | null }
 
 /** 날씨기반 추천 결과에 영향을 주는 조건. 이 중 하나가 바뀌면 결과의 시작 장소(sp)를 지운다. */
 const TRIP_KEYS: (keyof Conditions)[] = ['region', 'area', 'env', 'type', 'start', 'days']
@@ -107,6 +114,8 @@ export default function MainPage({ me, onLogin }: Props) {
   const env = readEnv(params.get('env'))
   const type = readType(params.get('type'))
   const tab = readTab(params.get('tab'))
+  // 장소 이름 검색은 관광지 목록 탭에서만 쓴다(기획서 18장 B)
+  const keyword = tab === 'list' ? readKeyword(params.get('q')) : null
 
   const [dayList] = useState(() => dayOptions(new Date()))
   const today = dayList[0]
@@ -170,6 +179,7 @@ export default function MainPage({ me, onLogin }: Props) {
         if (next.days !== undefined) put('days', next.days === 1 ? null : next.days)
         if (next.sp !== undefined) put('sp', next.sp)
         else if (TRIP_KEYS.some((k) => next[k] !== undefined)) p.delete('sp')
+        if (next.q !== undefined) put('q', next.q)
         return p
       }, options)
     },
@@ -214,16 +224,17 @@ export default function MainPage({ me, onLogin }: Props) {
    * - 관광지 목록 탭에서만. 날씨기반 추천 탭은 결과의 주변 지역 장소를 눌러도 결과가 유지돼야 하므로 바꾸지 않는다
    * - 장소가 지금 조건 안이면 바꾸지 않는다(서울 전체를 보다가 종로구 장소를 열면 그대로 서울 전체)
    * - 실내/실외와 테마는 사용자가 고른 것이라 바꾸지 않는다. 그 때문에 마커가 없으면 지도가 그 장소만 따로 그린다
+   * - 이름으로 검색하는 중이면 바꾸지 않는다. 검색은 지역과 상관없이 찾으므로, 바꾸면 목록과 지도만 다시 불러와 흔들린다
    * 주소 기록은 덮어써서 뒤로 가기가 꼬이지 않게 한다.
    */
   useEffect(() => {
-    if (tab !== 'list' || selectedId === null || selectedPlace === null || selectedPlace.id !== selectedId) return
+    if (tab !== 'list' || keyword !== null || selectedId === null || selectedPlace === null || selectedPlace.id !== selectedId) return
     const placeRegion = selectedPlace.ldongRegnCd
     if (placeRegion === null || !REGIONS.some((r) => r.code === placeRegion)) return
     const placeArea = selectedPlace.areaCode ?? null
     const outside = placeRegion !== region || (area !== null && placeArea !== area)
     if (outside) update({ region: placeRegion, area: placeArea }, { replace: true })
-  }, [tab, selectedId, selectedPlace, region, area, update])
+  }, [tab, keyword, selectedId, selectedPlace, region, area, update])
 
   // 지도에 따로 그릴 고른 장소(좌표가 서울·경기 범위 안일 때만)
   const selectedMarker = useMemo<MarkerItem | null>(() => {
@@ -238,7 +249,7 @@ export default function MainPage({ me, onLogin }: Props) {
     setLoading(true)
     setError(null)
     setMoreError(null)
-    fetchRecommendations({ region, area, date, type, env, page: 0, size: PAGE_SIZE })
+    fetchRecommendations({ region, area, date, type, env, keyword, page: 0, size: PAGE_SIZE })
       .then((res) => {
         if (cancelled) return
         setData(res)
@@ -254,12 +265,12 @@ export default function MainPage({ me, onLogin }: Props) {
     return () => {
       cancelled = true
     }
-  }, [region, area, date, type, env, reloadKey])
+  }, [region, area, date, type, env, keyword, reloadKey])
 
   // 지도 마커는 목록과 같은 조건으로 페이지 없이 받는다. 실패하면 마커만 비우고 목록은 그대로 쓴다.
   useEffect(() => {
     let cancelled = false
-    fetchMarkers({ region, area, date, type, env })
+    fetchMarkers({ region, area, date, type, env, keyword })
       .then((list) => {
         if (!cancelled) setMarkers(list)
       })
@@ -269,7 +280,16 @@ export default function MainPage({ me, onLogin }: Props) {
     return () => {
       cancelled = true
     }
-  }, [region, area, date, type, env, reloadKey])
+  }, [region, area, date, type, env, keyword, reloadKey])
+
+  // 검색 중이면 지도를 결과 첫 장소(좌표가 서울·경기 범위 안인 첫 장소)로 옮긴다
+  const firstHit = keyword !== null && !loading ? places.find((p) => inServiceArea(p.lat, p.lng)) : undefined
+  const focusLat = firstHit?.lat ?? null
+  const focusLng = firstHit?.lng ?? null
+  const focus = useMemo(
+    () => (focusLat !== null && focusLng !== null ? { lat: focusLat, lng: focusLng } : null),
+    [focusLat, focusLng],
+  )
 
   // 날씨에 따라 페이지 전체 분위기(배경색)를 바꾼다
   useEffect(() => {
@@ -280,7 +300,7 @@ export default function MainPage({ me, onLogin }: Props) {
     setLoadingMore(true)
     setMoreError(null)
     try {
-      const res = await fetchRecommendations({ region, area, date, type, env, page: page + 1, size: PAGE_SIZE })
+      const res = await fetchRecommendations({ region, area, date, type, env, keyword, page: page + 1, size: PAGE_SIZE })
       setPlaces((prev) => [...prev, ...res.places.items])
       setPage(res.places.page)
     } catch (e) {
@@ -329,6 +349,7 @@ export default function MainPage({ me, onLogin }: Props) {
         insetLeft={showTripWeather ? 760 : 440}
         selectedId={selectedId}
         selectedPlace={selectedMarker}
+        focus={tab === 'list' ? focus : null}
         panelCollapsed={collapsed}
         onSelect={openPlace}
         onOpenPanel={openPanel}
@@ -375,11 +396,17 @@ export default function MainPage({ me, onLogin }: Props) {
               areas={areas}
               area={area}
               onArea={(code) => update({ area: code })}
+              disabled={keyword !== null}
             />
+            <SearchBox value={keyword} onSearch={(q) => update({ q })} />
+            {keyword !== null && (
+              <p className="hint search-hint">검색 중에는 지역, 실내·실외, 테마 조건을 쓰지 않고 서울·경기 전체에서 이름으로 찾아요.</p>
+            )}
             <EnvPicker
               value={env}
               recommended={error ? null : (data?.recommendedEnv ?? null)}
               onChange={(next) => update({ env: next })}
+              disabled={keyword !== null}
             />
 
             {error ? (
@@ -404,6 +431,7 @@ export default function MainPage({ me, onLogin }: Props) {
                   onMore={loadMore}
                   selectedId={selectedId}
                   onSelect={openPlace}
+                  keyword={keyword}
                 />
               </div>
             )}

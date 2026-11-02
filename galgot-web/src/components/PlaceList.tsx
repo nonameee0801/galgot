@@ -14,6 +14,8 @@ interface Props {
   onMore: () => void
   selectedId: number | null
   onSelect: (id: number) => void
+  /** 장소 이름 검색어. 있으면 제목을 "검색 결과"로 바꾸고, 종류 버튼은 지역·실내/실외 버튼처럼 흐리게 막는다(검색은 종류로 거르지 않는다) */
+  keyword?: string | null
 }
 
 /** 패널 폭에 맞춘 한 줄 카드: 왼쪽 작은 사진, 오른쪽 이름과 주소. 누르면 지도에서 그 장소로 가고 상세가 열린다. */
@@ -62,18 +64,23 @@ export default function PlaceList({
   onMore,
   selectedId,
   onSelect,
+  keyword = null,
 }: Props) {
+  const searching = keyword !== null
   return (
     <section>
       <div className="list-head">
-        <h3>추천 장소 {total.toLocaleString('ko-KR')}곳</h3>
-        <div className="chips" role="group" aria-label="장소 종류">
+        <h3>
+          {searching ? `'${keyword}' 검색 결과` : '추천 장소'} {total.toLocaleString('ko-KR')}곳
+        </h3>
+        <div className={searching ? 'chips is-disabled' : 'chips'} role="group" aria-label="장소 종류">
           {TYPES.map((t) => (
             <button
               key={t.name}
               type="button"
               className="chip"
               aria-pressed={t.code === type}
+              disabled={searching}
               onClick={() => onType(t.code)}
             >
               {t.name}
@@ -84,7 +91,11 @@ export default function PlaceList({
 
       {places.length === 0 && !loading ? (
         <div className="notice">
-          <p>조건에 맞는 장소가 없어요. 다른 종류나 지역을 골라 보세요.</p>
+          <p>
+            {searching
+              ? '이름에 검색어가 들어간 장소가 없어요. 다른 낱말로 찾아 보세요.'
+              : '조건에 맞는 장소가 없어요. 다른 종류나 지역을 골라 보세요.'}
+          </p>
         </div>
       ) : (
         <ul className="tiles">

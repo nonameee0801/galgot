@@ -695,6 +695,59 @@ button {
   gap: 4px;
 }
 
+/* 장소 이름으로 검색하는 중에는 지역, 실내·실외, 테마 조건을 쓰지 않으므로 흐리게 막는다(18장 B) */
+.controls.is-disabled,
+.env-picker.is-disabled,
+.chips.is-disabled {
+  opacity: 0.45;
+}
+
+.controls.is-disabled button,
+.env-picker.is-disabled button,
+.chips.is-disabled button {
+  cursor: not-allowed;
+}
+
+/* 관광지 목록의 장소 이름 검색칸 */
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.search-box input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+}
+
+.search-box input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.search-box .search-clear {
+  width: 30px;
+  height: 30px;
+}
+
+.search-submit {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+
+.search-hint {
+  margin-bottom: 4px;
+}
+
 .regions {
   display: flex;
   flex-wrap: wrap;
