@@ -33,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -82,7 +83,7 @@ class RecommendationServiceTest {
         when(placeRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(withCoords, noCoords)));
 
-        List<MarkerResponse> markers = service.markers(gapyeong, today, null, null);
+        List<MarkerResponse> markers = service.markers(gapyeong, today, null, null, null);
 
         assertEquals(List.of(new MarkerResponse(1L, "가평 수목원", 37.8, 127.5, Env.OUTDOOR)), markers);
     }
@@ -95,7 +96,7 @@ class RecommendationServiceTest {
         when(placeRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(ok, wrongCoords)));
 
-        List<MarkerResponse> markers = service.markers(gapyeong, today, null, null);
+        List<MarkerResponse> markers = service.markers(gapyeong, today, null, null, null);
 
         assertEquals(List.of(1L), markers.stream().map(MarkerResponse::id).toList());
     }
@@ -117,12 +118,50 @@ class RecommendationServiceTest {
         when(placeRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of()));
 
-        service.markers(gapyeong, today, 12, EnvPreference.Choice.ALL);
+        service.markers(gapyeong, today, 12, EnvPreference.Choice.ALL, null);
 
         ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
         verify(placeRepository).findAll(any(Specification.class), pageable.capture());
         assertEquals(0, pageable.getValue().getPageNumber());
         assertEquals(RecommendationService.MAX_MARKERS, pageable.getValue().getPageSize());
         verify(weatherService).getForecast(eq(gapyeong), eq(today));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void 검색어가_있으면_고른_지역으로_거르지_않고_날씨는_고른_지역_기준이다() {
+        when(placeRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.recommend(gapyeong, today, 12, EnvPreference.Choice.INDOOR, "  박물관 ", 0, 12);
+
+        // 지역의 시군구 코드로 거르지 않는다(서울·경기 전체에서 이름으로만)
+        verify(areaService, never()).signguCodes(any());
+        verify(weatherService).getForecast(eq(gapyeong), eq(today));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void 검색어가_공백뿐이면_지역_조건으로_찾는다() {
+        when(placeRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.markers(gapyeong, today, null, null, "   ");
+
+        verify(areaService).signguCodes(gapyeong);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void 검색_결과_마커도_서울경기_범위_밖_좌표는_뺀다() {
+        Place museum = place(5L, "국립중앙박물관", 37.52, 126.98, Env.INDOOR);
+        Place wrongCoords = place(6L, "박물관(좌표 오류)", 19.69, 117.99, Env.INDOOR);
+        when(placeRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(museum, wrongCoords)));
+
+        List<MarkerResponse> markers = service.markers(gapyeong, today, 14, EnvPreference.Choice.OUTDOOR, "박물관");
+
+        assertEquals(List.of(5L), markers.stream().map(MarkerResponse::id).toList());
+        verify(areaService, never()).signguCodes(any());
     }
 }

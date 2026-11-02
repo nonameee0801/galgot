@@ -23,11 +23,13 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 날씨 + 장소 추천. 지역(시도 전체 또는 구·시군)의 날씨로 판정하고, 그 지역의 장소만 보여 준다.
  * 어떤 실내외 종류를 어떤 순서로 보여 줄지는 EnvPreference(순수 로직)가 정한다.
  * env를 고르지 않으면 그날 추천을 고른 것과 같다(부적합하면 INDOOR → BOTH, 적합하면 OUTDOOR → BOTH).
+ * 검색어(keyword)가 있으면 장소는 서울·경기 전체에서 이름으로만 찾는다(KeywordSearch). 날씨 판정은 고른 지역 그대로다.
  * WeatherService(외부 호출 포함)를 트랜잭션 없이 부르고, 장소 조회는 repository 호출 한 번으로 끝난다.
  */
 @Service
@@ -61,15 +63,14 @@ public class RecommendationService {
     }
 
     public RecommendationResponse recommend(Area area, LocalDate date, Integer contentTypeId,
-                                            EnvPreference.Choice choice, int page, int size) {
+                                            EnvPreference.Choice choice, String keyword, int page, int size) {
         WeatherForecast forecast = weatherService.getForecast(area, date);
         OutdoorJudge.Result judged = judge(forecast);
         EnvPreference.Plan plan = EnvPreference.plan(choice, judged);
 
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-        Page<Place> places = findPlaces(area.getLdongRegnCd(), areaService.signguCodes(area),
-                plan, contentTypeId, safePage, safeSize);
+        Page<Place> places = find(area, plan, contentTypeId, KeywordSearch.normalize(keyword), safePage, safeSize);
 
         return new RecommendationResponse(
                 WeatherResponse.from(forecast, area),
@@ -85,11 +86,12 @@ public class RecommendationService {
      * 날씨는 DB에 저장된 값을 쓰므로 목록과 함께 불러도 기상청 호출이 늘지 않는다.
      * 좌표가 없거나 서울·경기 범위 밖인 장소는 뺀다(목록에는 그대로 나온다).
      */
-    public List<MarkerResponse> markers(Area area, LocalDate date, Integer contentTypeId, EnvPreference.Choice choice) {
+    public List<MarkerResponse> markers(Area area, LocalDate date, Integer contentTypeId,
+                                        EnvPreference.Choice choice, String keyword) {
         WeatherForecast forecast = weatherService.getForecast(area, date);
         EnvPreference.Plan plan = EnvPreference.plan(choice, judge(forecast));
 
-        return findPlaces(area.getLdongRegnCd(), areaService.signguCodes(area), plan, contentTypeId, 0, MAX_MARKERS)
+        return find(area, plan, contentTypeId, KeywordSearch.normalize(keyword), 0, MAX_MARKERS)
                 .getContent().stream()
                 .filter(p -> inServiceArea(p.getLat(), p.getLng()))
                 .map(MarkerResponse::from)
@@ -105,6 +107,37 @@ public class RecommendationService {
 
     private OutdoorJudge.Result judge(WeatherForecast f) {
         return outdoorJudge.judge(f.getPrecipType(), f.getPop(), f.getTempMax(), f.getTempMin());
+    }
+
+    /** 검색어가 있으면 이름 검색(지역, 실내/실외, 테마를 쓰지 않음), 없으면 지역과 조건으로 찾는다. */
+    private Page<Place> find(Area area, EnvPreference.Plan plan, Integer contentTypeId,
+                             Optional<String> keyword, int page, int size) {
+        if (keyword.isPresent()) {
+            return findByKeyword(keyword.get(), page, size);
+        }
+        return findPlaces(area.getLdongRegnCd(), areaService.signguCodes(area), plan, contentTypeId, page, size);
+    }
+
+    /**
+     * 서울·경기 전체에서 이름에 검색어가 들어 있는 장소. 이름이 같은 장소 → 검색어로 시작 → 포함 순, 같은 묶음은 이름순.
+     * keyword는 KeywordSearch.normalize를 거친 값이다.
+     */
+    Page<Place> findByKeyword(String keyword, int page, int size) {
+        Specification<Place> spec = (root, query, cb) -> {
+            Expression<String> title = root.get("title");
+            Predicate inRegions = root.get("ldongRegnCd").in(KeywordSearch.SERVICE_REGIONS);
+            Predicate contains = cb.like(title, KeywordSearch.containsPattern(keyword), KeywordSearch.ESCAPE);
+            // 개수 세기 쿼리(Long)에는 정렬을 붙이지 않는다
+            if (query != null && !Long.class.equals(query.getResultType())) {
+                Expression<Integer> rank = cb.<Integer>selectCase()
+                        .when(cb.equal(title, keyword), 0)
+                        .when(cb.like(title, KeywordSearch.startsWithPattern(keyword), KeywordSearch.ESCAPE), 1)
+                        .otherwise(2);
+                query.orderBy(cb.asc(rank), cb.asc(title), cb.asc(root.get("id")));
+            }
+            return cb.and(inRegions, contains);
+        };
+        return placeRepository.findAll(spec, PageRequest.of(page, size, Sort.unsorted()));
     }
 
     /**
