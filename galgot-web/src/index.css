@@ -695,6 +695,59 @@ button {
   gap: 4px;
 }
 
+/* 장소 이름으로 검색하는 중에는 지역, 실내·실외, 테마 조건을 쓰지 않으므로 흐리게 막는다(18장 B) */
+.controls.is-disabled,
+.env-picker.is-disabled,
+.chips.is-disabled {
+  opacity: 0.45;
+}
+
+.controls.is-disabled button,
+.env-picker.is-disabled button,
+.chips.is-disabled button {
+  cursor: not-allowed;
+}
+
+/* 관광지 목록의 장소 이름 검색칸 */
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.search-box input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+}
+
+.search-box input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.search-box .search-clear {
+  width: 30px;
+  height: 30px;
+}
+
+.search-submit {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+
+.search-hint {
+  margin-bottom: 4px;
+}
+
 .regions {
   display: flex;
   flex-wrap: wrap;
@@ -1009,6 +1062,44 @@ button {
   margin: 0;
   color: var(--muted);
   font-size: 0.9375rem;
+}
+
+/* 장소 상세의 공유하기, 나만의 코스에 넣기(18장 C) */
+.detail-actions {
+  display: grid;
+  gap: 4px;
+}
+
+.detail-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.detail-buttons .btn-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+}
+
+.share-status {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  min-height: 1.25em;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.share-url {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--soft);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
 }
 
 /* 장소 상세 정보(17장): 이용 정보 목록, 소개(5줄 뒤 더 보기), 안내 문구 */

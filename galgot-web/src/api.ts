@@ -137,6 +137,8 @@ export interface RecommendationQuery {
   type: number | null
   /** null이면 날씨에 맞춰(부적합한 날 실외 제외) */
   env: EnvChoice | null
+  /** 장소 이름 검색어. 있으면 서울·경기 전체에서 이름으로만 찾는다(지역, 실내/실외, 테마로 거르지 않음) */
+  keyword?: string | null
   page: number
   size: number
 }
@@ -157,15 +159,19 @@ export function fetchRecommendations(q: RecommendationQuery): Promise<Recommenda
   if (q.env !== null) {
     params.set('env', q.env)
   }
+  if (q.keyword) {
+    params.set('keyword', q.keyword)
+  }
   return request<Recommendation>(`/api/recommendations?${params.toString()}`)
 }
 
-/** 지도 마커. 목록과 같은 조건(지역, 오늘 날씨, 실내/실외, 종류)의 장소를 페이지 없이 받는다. */
+/** 지도 마커. 목록과 같은 조건(지역, 오늘 날씨, 실내/실외, 종류, 검색어)의 장소를 페이지 없이 받는다. */
 export function fetchMarkers(q: Omit<RecommendationQuery, 'page' | 'size'>): Promise<MarkerItem[]> {
   const params = new URLSearchParams({ region: q.region, date: q.date })
   if (q.area !== null) params.set('area', q.area)
   if (q.type !== null) params.set('type', String(q.type))
   if (q.env !== null) params.set('env', q.env)
+  if (q.keyword) params.set('keyword', q.keyword)
   return request<MarkerItem[]>(`/api/recommendations/markers?${params.toString()}`)
 }
 

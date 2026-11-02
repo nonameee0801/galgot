@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ArrowLeft, ExternalLink } from 'lucide-react'
+import { ArrowLeft, BookmarkPlus, ExternalLink, Share2 } from 'lucide-react'
 import { ApiError, fetchPlace, fetchPlaceInfo } from '../api'
 import type { Place, PlaceInfo } from '../api'
 import { ENV_LABEL, shortAddr, typeName } from '../labels'
@@ -14,6 +14,75 @@ interface Props {
 type Result = { id: number; place: Place } | { id: number; error: string }
 
 type InfoResult = { id: number; info: PlaceInfo } | { id: number; error: string }
+
+type ShareState = { kind: 'idle' } | { kind: 'copied' } | { kind: 'manual'; url: string }
+
+/**
+ * 장소 공유하기와 나만의 코스에 넣기 버튼(기획서 18장 C).
+ * 공유 주소는 지금 화면의 조건(?region 등)을 빼고 /places/:id 만 쓴다. 받은 사람은 장소에 맞춘 지역으로 상세를 본다.
+ * 휴대폰처럼 터치 화면이면 기기 공유 창을 띄우고, 컴퓨터면 링크를 복사한다
+ * (윈도우 크롬도 공유 창을 지원해서, 기기 종류로 나누지 않으면 컴퓨터에서도 공유 창이 뜬다).
+ * 복사하지 못하면 주소를 그대로 보여 줘 직접 복사하게 한다.
+ */
+function DetailActions({ place }: { place: Place }) {
+  const [share, setShare] = useState<ShareState>({ kind: 'idle' })
+
+  // "링크를 복사했어요"는 잠깐만 보여 준다
+  useEffect(() => {
+    if (share.kind !== 'copied') return
+    const timer = window.setTimeout(() => setShare({ kind: 'idle' }), 2500)
+    return () => window.clearTimeout(timer)
+  }, [share])
+
+  async function onShare() {
+    const url = `${window.location.origin}/places/${place.id}`
+    const touch = window.matchMedia?.('(pointer: coarse)').matches ?? false
+    if (touch && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: `${place.title} | 갈곳`, url })
+        return
+      } catch (e) {
+        // 사용자가 공유 창을 닫은 것이면 그대로 끝내고, 다른 실패면 링크 복사로 넘어간다
+        if (e instanceof DOMException && e.name === 'AbortError') return
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setShare({ kind: 'copied' })
+    } catch {
+      setShare({ kind: 'manual', url })
+    }
+  }
+
+  function onAddToCourse() {
+    // 담는 방식(코스가 없으면 만들기, 있으면 고르기)은 다음 단계에서 정한다
+    window.alert('나만의 코스에 넣기는 준비 중이에요.')
+  }
+
+  return (
+    <div className="detail-actions">
+      <div className="detail-buttons">
+        <button type="button" className="btn-line" onClick={onShare}>
+          <Share2 size={16} aria-hidden="true" />
+          공유하기
+        </button>
+        <button type="button" className="btn-line" onClick={onAddToCourse}>
+          <BookmarkPlus size={16} aria-hidden="true" />
+          나만의 코스에 넣기
+        </button>
+      </div>
+      <p className="share-status" aria-live="polite">
+        {share.kind === 'copied' && '링크를 복사했어요.'}
+        {share.kind === 'manual' && (
+          <>
+            링크를 복사하지 못했어요. 아래 주소를 직접 복사해 주세요.
+            <input className="share-url" readOnly value={share.url} onFocus={(e) => e.currentTarget.select()} />
+          </>
+        )}
+      </p>
+    </div>
+  )
+}
 
 /** 화면에 보여 줄 정보 줄(있는 것만, 이 순서). 홈페이지와 소개는 따로 보여 준다. */
 function infoRows(info: PlaceInfo): { label: string; value: string }[] {
@@ -179,6 +248,7 @@ export default function PlaceDetail({ id, onBack, onLoaded }: Props) {
             <span>{typeName(current.place.contentTypeId)}</span>
           </p>
           {current.place.addr && <p className="detail-addr">{shortAddr(current.place.addr)}</p>}
+          <DetailActions key={current.place.id} place={current.place} />
           {/* 갈곳 화면 자체가 지도라 바깥 지도 링크(카카오맵에서 보기)는 두지 않고, 이용 정보를 보여 준다 */}
           <PlaceInfoSection id={current.place.id} />
         </>

@@ -14,13 +14,15 @@ interface Props {
    * 경기는 시·군을 꼭 골라야 해서 "전체"를 빼고 처음에 펼쳐 둔다.
    */
   mode?: 'list' | 'trip'
+  /** 장소 이름으로 검색하는 중이면 지역 조건을 쓰지 않으므로 버튼을 흐리게 막는다 */
+  disabled?: boolean
 }
 
 /**
  * 지역(시도, 구·시군)을 고르는 줄. 날짜는 고르지 않고 항상 오늘 기준이다(다른 날짜는 날씨기반 추천에서 고른다).
  * 구·시군은 "종로구 ▾" 버튼을 눌러 펼치는 버튼 격자에서 고르고, 고르면 다시 접힌다.
  */
-export default function Controls({ region, onRegion, areas, area, onArea, mode = 'list' }: Props) {
+export default function Controls({ region, onRegion, areas, area, onArea, mode = 'list', disabled = false }: Props) {
   const trip = mode === 'trip'
   const [open, setOpen] = useState(trip && area === null)
   const unit = region === '11' ? '구' : '시·군'
@@ -39,7 +41,7 @@ export default function Controls({ region, onRegion, areas, area, onArea, mode =
   }
 
   return (
-    <div className="controls">
+    <div className={disabled ? 'controls is-disabled' : 'controls'}>
       <div className="regions" role="group" aria-label="시도 선택">
         {REGIONS.map((r) => (
           <button
@@ -47,6 +49,7 @@ export default function Controls({ region, onRegion, areas, area, onArea, mode =
             type="button"
             className="seg"
             aria-pressed={r.code === region}
+            disabled={disabled}
             onClick={() => pickRegion(r.code)}
           >
             {r.name}
@@ -82,14 +85,14 @@ export default function Controls({ region, onRegion, areas, area, onArea, mode =
         aria-expanded={open}
         aria-controls="area-grid"
         aria-label={`${unit} 선택: ${current}`}
-        disabled={areas.length === 0}
+        disabled={disabled || areas.length === 0}
         onClick={() => setOpen((o) => !o)}
       >
         <strong>{current}</strong>
         <ChevronDown size={18} aria-hidden="true" />
       </button>
       )}
-      {open && !hideArea && (
+      {open && !hideArea && !disabled && (
         <div className="area-grid" id="area-grid" role="group" aria-label={`${unit} 선택`}>
           {!trip && (
             <button type="button" className="area-chip" aria-pressed={area === null} onClick={() => pickArea(null)}>
