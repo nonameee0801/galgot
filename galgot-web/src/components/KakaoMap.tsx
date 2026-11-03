@@ -38,55 +38,131 @@ interface Props {
 
 type Status = 'loading' | 'ready' | 'error'
 
-// 마커 모양: 실내는 채운 원, 실외는 빈 원, 실내외는 왼쪽 반만 채운 원 (목록의 점과 같은 규칙, 색이 아니라 모양으로도 구분)
-const INK = '#1b2530'
-const FILL = '#2f6fa5'
+/*
+ * 마커(기획서 19장): 매끈한 물방울 핀. 둥근 머리 안에 실내는 건물, 실외는 나무 아이콘.
+ * 실내는 청록(위가 살짝 밝은 그라데이션)에 흰 테두리, 실외는 흰 바탕에 초록 테두리, 실내외는 왼쪽 반을 주황으로
+ * (목록의 점과 같은 규칙, 색이 아니라 채움 모양으로도 구분). 고르면 핀이 커지고 옆에 흰 이름표가 뜬다.
+ * 색은 index.css의 --accent(실내), --outdoor(실외), --rec(실내외)와 같다.
+ */
+const ENV_COLOR: Record<Env, string> = { INDOOR: '#0e6f73', OUTDOOR: '#4e8a2f', BOTH: '#f4a340' }
+const INK = '#16242b'
+// lucide 아이콘(Building2, Trees)의 선. 24칸 기준
+const BUILDING =
+  '<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>' +
+  '<path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4M10 10h4M10 14h4M10 18h4"/>'
+const TREES =
+  '<path d="M10 10v.2A3 3 0 0 1 8.9 16H5a3 3 0 0 1-1-5.8V10a3 3 0 0 1 6 0Z"/><path d="M7 16v6M13 19v3"/>' +
+  '<path d="M12 19h8.3a1 1 0 0 0 .7-1.7L18 14h.3a1 1 0 0 0 .7-1.7L16 9h.2a1 1 0 0 0 .8-1.7L13 3l-1.4 1.5"/>'
+const DEFS =
+  '<defs><filter id="s" x="-40%" y="-40%" width="180%" height="180%">' +
+  '<feDropShadow dx="0" dy="1.5" stdDeviation="1.6" flood-color="#0a2832" flood-opacity="0.3"/></filter>' +
+  '<linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#169198"/>' +
+  '<stop offset="1" stop-color="#0b5f63"/></linearGradient></defs>'
 const imageCache = new Map<string, kakao.maps.MarkerImage>()
+
+// 묶음 표시 안의 작은 청록 핀
+const CLUSTER_PIN =
+  'data:image/svg+xml;charset=utf-8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 36"><path d="M15 34 C12 29 2 24 2 15 A13 13 0 1 1 28 15 ' +
+      'C28 24 18 29 15 34Z" fill="#0e6f73"/><circle cx="15" cy="15" r="5" fill="#fff"/></svg>',
+  )
+
+/** 핀 크기: 머리 반지름. 고르면 1.35배 */
+const HEAD = 13
+const SCALE_SELECTED = 1.35
+
+/** 핀 그림의 자리: 폭, 높이, 꼬리 끝, 머리 가운데 */
+function pinBox(selected: boolean) {
+  const s = selected ? SCALE_SELECTED : 1
+  const r = HEAD * s
+  const w = Math.ceil(r * 2 + 14)
+  const cx = w / 2
+  const headY = 5 + r // 위 여백 5
+  const tipY = headY + r + 8 * s
+  const h = Math.ceil(tipY + 5)
+  return { s, r, w, h, cx, headY, tipY }
+}
+
+/** 물방울 모양(둥근 머리 + 짧은 꼬리). 꼬리 끝이 (cx, tipY) */
+function dropPath(cx: number, headY: number, r: number, tipY: number, s: number): string {
+  return (
+    `M${cx} ${tipY} C${cx - 3 * s} ${tipY - 5 * s} ${cx - r} ${headY + r * 0.55} ${cx - r} ${headY} ` +
+    `A${r} ${r} 0 1 1 ${cx + r} ${headY} C${cx + r} ${headY + r * 0.55} ${cx + 3 * s} ${tipY - 5 * s} ${cx} ${tipY}Z`
+  )
+}
+
+function iconSvg(env: Env, color: string, x: number, y: number, size: number): string {
+  return (
+    `<g transform="translate(${x - size / 2} ${y - size / 2}) scale(${size / 24})" fill="none" stroke="${color}" ` +
+    `stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${env === 'OUTDOOR' ? TREES : BUILDING}</g>`
+  )
+}
+
+function toImage(k: typeof kakao, svg: string, w: number, h: number, tipX: number, tipY: number): kakao.maps.MarkerImage {
+  return new k.maps.MarkerImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), new k.maps.Size(w, h), {
+    offset: new k.maps.Point(tipX, tipY),
+  })
+}
 
 function markerImage(k: typeof kakao, env: Env, selected: boolean): kakao.maps.MarkerImage {
   const key = `${env}-${selected}`
   const cached = imageCache.get(key)
   if (cached) return cached
 
-  const r = selected ? 10 : 6
-  const sw = selected ? 3 : 2
-  const s = (r + sw) * 2
-  const c = s / 2
-  const ring = `<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${INK}" stroke-width="${sw}"/>`
-  const body =
-    env === 'INDOOR'
-      ? `<circle cx="${c}" cy="${c}" r="${r}" fill="${FILL}"/>`
-      : env === 'OUTDOOR'
-        ? `<circle cx="${c}" cy="${c}" r="${r}" fill="#fff"/>`
-        : `<circle cx="${c}" cy="${c}" r="${r}" fill="#fff"/><path d="M ${c} ${c - r} A ${r} ${r} 0 0 0 ${c} ${c + r} Z" fill="${FILL}"/>`
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}">${body}${ring}</svg>`
-  const image = new k.maps.MarkerImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), new k.maps.Size(s, s), {
-    offset: new k.maps.Point(c, c),
-  })
+  const color = ENV_COLOR[env]
+  const { s, r, w, h, cx, headY, tipY } = pinBox(selected)
+  const path = dropPath(cx, headY, r, tipY, s)
+  const fill = env === 'INDOOR' ? 'url(#t)' : '#fff'
+  const stroke = env === 'INDOOR' ? '#fff' : color
+  // 실내외: 왼쪽 반을 주황으로 채운다(테두리 안쪽만)
+  const half =
+    env === 'BOTH'
+      ? `<clipPath id="c"><path d="${path}"/></clipPath><rect x="0" y="0" width="${cx}" height="${h}" fill="${color}" clip-path="url(#c)"/>`
+      : ''
+  const icon = iconSvg(env, env === 'INDOOR' ? '#fff' : env === 'OUTDOOR' ? color : INK, cx, headY, 14 * s)
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${DEFS}` +
+    `<ellipse cx="${cx}" cy="${tipY + 1}" rx="${5 * s}" ry="${1.8 * s}" fill="rgba(10,40,50,0.25)"/>` +
+    `<g filter="url(#s)"><path d="${path}" fill="${fill}"/></g>${half}` +
+    `<path d="${path}" fill="none" stroke="${stroke}" stroke-width="${2.2 * s}"/>${icon}</svg>`
+  const image = toImage(k, svg, w, h, cx, tipY)
   imageCache.set(key, image)
   return image
 }
 
-/** 일차별 코스의 번호 마커: 일차 색 원 안에 그날 방문 순서. 고르면 크게 그린다. */
+/** 일차별 코스의 번호 핀: 일차 색 물방울 안에 그날 방문 순서. 고르면 크게 그린다. */
 function routeImage(k: typeof kakao, dayIndex: number, order: number, selected: boolean): kakao.maps.MarkerImage {
   const color = DAY_STYLES[dayIndex % DAY_STYLES.length].color
   const key = `route-${dayIndex}-${order}-${selected}`
   const cached = imageCache.get(key)
   if (cached) return cached
 
-  const r = selected ? 15 : 11
-  const s = (r + 3) * 2
-  const c = s / 2
+  const { s, r, w, h, cx, headY, tipY } = pinBox(selected)
+  const path = dropPath(cx, headY, r, tipY, s)
   const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}">` +
-    `<circle cx="${c}" cy="${c}" r="${r}" fill="${color}" stroke="#fff" stroke-width="${selected ? 3 : 2}"/>` +
-    `<text x="${c}" y="${c}" dy="0.35em" text-anchor="middle" font-family="sans-serif" font-weight="700" ` +
-    `font-size="${selected ? 15 : 12}" fill="#fff">${order}</text></svg>`
-  const image = new k.maps.MarkerImage('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), new k.maps.Size(s, s), {
-    offset: new k.maps.Point(c, c),
-  })
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${DEFS}` +
+    `<ellipse cx="${cx}" cy="${tipY + 1}" rx="${5 * s}" ry="${1.8 * s}" fill="rgba(10,40,50,0.25)"/>` +
+    `<g filter="url(#s)"><path d="${path}" fill="${color}" stroke="#fff" stroke-width="${2.2 * s}"/></g>` +
+    `<text x="${cx}" y="${headY}" dy="0.36em" text-anchor="middle" font-family="sans-serif" font-weight="800" ` +
+    `font-size="${Math.round(13 * s)}" fill="#fff">${order}</text></svg>`
+  const image = toImage(k, svg, w, h, cx, tipY)
   imageCache.set(key, image)
   return image
+}
+
+/**
+ * 고른 장소의 흰 이름표. 커진 핀 머리 오른쪽에 붙는다.
+ * 장소 이름은 외부 데이터라 innerHTML이 아니라 textContent로 넣는다.
+ */
+function nameLabel(item: MarkerItem): HTMLElement {
+  const { r, headY, tipY } = pinBox(true)
+  const box = document.createElement('div')
+  box.className = 'map-pin-label'
+  // 위치 기준점은 꼬리 끝. 머리 가운데 높이로 올리고 머리 오른쪽으로 비킨다
+  box.style.transform = `translate(${Math.round(r + 8)}px, ${-Math.round(tipY - headY)}px)`
+  box.textContent = item.title
+  return box
 }
 
 type Drawn = { marker: kakao.maps.Marker; item: MarkerItem; image: (selected: boolean) => kakao.maps.MarkerImage }
@@ -128,6 +204,8 @@ export default function KakaoMap({
   const mapRef = useRef<kakao.maps.Map | null>(null)
   const clustererRef = useRef<kakao.maps.MarkerClusterer | null>(null)
   const overlayRef = useRef<kakao.maps.CustomOverlay | null>(null)
+  // 고른 장소의 이름표
+  const labelRef = useRef<kakao.maps.CustomOverlay | null>(null)
   // 마커 목록에 없는 고른 장소를 따로 그린 마커
   const extraRef = useRef<kakao.maps.Marker | null>(null)
   const drawn = useRef(new Map<number, Drawn>())
@@ -153,7 +231,31 @@ export default function KakaoMap({
         if (cancelled || !container) return
         const map = new k.maps.Map(container, { center: new k.maps.LatLng(37.5665, 126.978), level: 8 })
         mapRef.current = map
-        clustererRef.current = new k.maps.MarkerClusterer({ map, averageCenter: true, minLevel: 6, gridSize: 60 })
+        clustererRef.current = new k.maps.MarkerClusterer({
+          map,
+          averageCenter: true,
+          minLevel: 6,
+          gridSize: 60,
+          // 묶음 표시(기획서 19장): 흰 알약 안에 청록 핀 아이콘과 "24곳". 고른 장소의 흰 이름표와 같은 모양.
+          // 10곳 이상, 50곳 이상이면 글자를 조금씩 크게
+          calculator: [10, 50],
+          texts: (count) => `${count}곳`,
+          styles: [13, 14, 15].map((font) => ({
+            width: 'auto',
+            height: `${font + 17}px`,
+            lineHeight: `${font + 17}px`,
+            padding: `0 12px 0 ${font + 17}px`,
+            borderRadius: '999px',
+            background: `#fff url("${CLUSTER_PIN}") no-repeat 10px center / ${font}px ${font + 3}px`,
+            boxShadow: '0 3px 12px rgba(10, 40, 50, 0.25)',
+            color: '#0e6f73',
+            fontFamily: 'inherit',
+            fontWeight: '800',
+            fontSize: `${font}px`,
+            whiteSpace: 'nowrap',
+            textAlign: 'center',
+          })),
+        })
         observer = new ResizeObserver(() => map.relayout())
         observer.observe(container)
         setStatus('ready')
@@ -165,6 +267,7 @@ export default function KakaoMap({
       cancelled = true
       observer?.disconnect()
       overlayRef.current?.setMap(null)
+      labelRef.current?.setMap(null)
       extraRef.current?.setMap(null)
       clustererRef.current?.clear()
       routeShapes.current.forEach((s) => s.setMap(null))
@@ -187,6 +290,8 @@ export default function KakaoMap({
     routeShapes.current.forEach((s) => s.setMap(null))
     routeShapes.current = []
     overlayRef.current?.setMap(null)
+    labelRef.current?.setMap(null)
+    labelRef.current = null
     drawn.current.clear()
     prevSelected.current = null
 
@@ -269,6 +374,8 @@ export default function KakaoMap({
     }
     overlayRef.current?.setMap(null)
     overlayRef.current = null
+    labelRef.current?.setMap(null)
+    labelRef.current = null
     extraRef.current?.setMap(null)
     extraRef.current = null
     prevSelected.current = selectedId
@@ -296,15 +403,20 @@ export default function KakaoMap({
     map.panTo(position)
 
     if (panelCollapsed) {
+      // 패널이 접혀 있으면 이름표 대신 상세 보기 버튼이 있는 정보창을 핀 위에 띄운다
       const overlay = new k.maps.CustomOverlay({
         position,
         content: infoElement(current.item, () => handlers.current.onOpenPanel()),
-        yAnchor: 1.35,
+        yAnchor: 1.75,
         zIndex: 20,
         clickable: true,
       })
       overlay.setMap(map)
       overlayRef.current = overlay
+    } else {
+      const label = new k.maps.CustomOverlay({ position, content: nameLabel(current.item), xAnchor: 0, yAnchor: 0.5, zIndex: 15 })
+      label.setMap(map)
+      labelRef.current = label
     }
   }, [selectedId, selectedPlace, markers, route, status, panelCollapsed])
 

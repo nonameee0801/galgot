@@ -9,6 +9,8 @@ interface Props {
   onTab?: (key: string) => void
   collapsed: boolean
   onToggle: () => void
+  /** 탭 위의 표지(사진, 날씨 효과, 판정 문장). 접으면 숨긴다 */
+  cover?: ReactNode
   children: ReactNode
 }
 
@@ -16,11 +18,12 @@ interface Props {
  * 지도 왼쪽(좁은 화면에서는 아래)에 뜨는 목록 패널. 접으면 지도를 넓게 볼 수 있다.
  * 접힘 상태는 지도도 알아야 해서(정보창, 범위 여백) 화면(MainPage)이 들고 있고, 이 브라우저에 기억한다.
  */
-export default function SidePanel({ title, tabs, tab, onTab, collapsed, onToggle, children }: Props) {
+export default function SidePanel({ title, tabs, tab, onTab, collapsed, onToggle, cover, children }: Props) {
   const label = collapsed ? `${title} 펼치기` : `${title} 접기`
 
   return (
     <aside className="panel" data-collapsed={collapsed} aria-label={title}>
+      {cover && !collapsed && cover}
       <div className="panel-head">
         {tabs && onTab ? (
           <div className="panel-title panel-tabs" role="tablist" aria-label="패널 메뉴">

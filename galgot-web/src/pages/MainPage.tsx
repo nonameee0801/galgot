@@ -6,6 +6,7 @@ import Controls from '../components/Controls.tsx'
 import EnvPicker from '../components/EnvPicker.tsx'
 import KakaoMap from '../components/KakaoMap.tsx'
 import PlaceDetail from '../components/PlaceDetail.tsx'
+import PanelCover from '../components/PanelCover.tsx'
 import PlaceList from '../components/PlaceList.tsx'
 import SearchBox from '../components/SearchBox.tsx'
 import SidePanel from '../components/SidePanel.tsx'
@@ -13,7 +14,17 @@ import TripTab from '../components/TripTab.tsx'
 import type { TripConditions, TripWeatherInfo } from '../components/TripTab.tsx'
 import TripWeatherPanel from '../components/TripWeatherPanel.tsx'
 import WeatherCard from '../components/WeatherCard.tsx'
-import { ENV_CHOICES, REGIONS, TYPES, dayOptions, moodOf, startOptions } from '../labels.ts'
+import {
+  ENV_CHOICES,
+  REGIONS,
+  TYPES,
+  areaLabel,
+  dayOptions,
+  shortAreaName,
+  startOptions,
+  travelHeadline,
+  weatherKind,
+} from '../labels.ts'
 import type { DayOption } from '../labels.ts'
 import { loadListSearch, saveListSearch } from '../nav.ts'
 
@@ -294,11 +305,6 @@ export default function MainPage({ me, onLogin }: Props) {
     [focusLat, focusLng],
   )
 
-  // 날씨에 따라 페이지 전체 분위기(배경색)를 바꾼다
-  useEffect(() => {
-    document.documentElement.dataset.mood = data ? moodOf(data.weather) : 'cloud'
-  }, [data])
-
   async function loadMore() {
     setLoadingMore(true)
     setMoreError(null)
@@ -344,6 +350,51 @@ export default function MainPage({ me, onLogin }: Props) {
   // 날씨기반 추천 탭에서는 왼쪽 패널 옆에 날씨 패널이 붙는다(왼쪽 패널을 접으면 함께 숨긴다)
   const showTripWeather = tab === 'trip' && tripWeather !== null && !collapsed
 
+  /*
+   * 패널 표지(기획서 19장): 사진은 지금 목록(추천 탭은 1일차 결과)에서 사진이 있는 첫 장소, 판정 문장은 여행 말투.
+   * 장소 상세를 보는 동안에는 상세 사진이 있어 표지를 숨긴다.
+   */
+  function cover() {
+    if (selectedId !== null) return null
+    if (tab === 'trip') {
+      const first = tripWeather?.items[0]
+      const photoPlace = route?.[0]?.places.map((s) => s.place).find((p) => p.imageUrl ?? p.thumbnailUrl)
+      const photo = photoPlace ? (photoPlace.imageUrl ?? photoPlace.thumbnailUrl) : null
+      if (tripWeather && first?.weather && first.outdoorSuitable !== undefined) {
+        return (
+          <PanelCover
+            photo={photo}
+            kind={weatherKind(first.weather)}
+            where={`${tripWeather.where} · ${first.title}`}
+            headline={travelHeadline(first.weather, first.outdoorSuitable, shortAreaName(first.weather.areaName))}
+          />
+        )
+      }
+      return <PanelCover photo={photo} kind={null} where="날씨기반 추천" headline="날씨에 맞춘 여행 코스를 짜 드려요" />
+    }
+    const photoPlace = places.find((p) => p.imageUrl ?? p.thumbnailUrl)
+    const photo = photoPlace ? (photoPlace.imageUrl ?? photoPlace.thumbnailUrl) : null
+    if (!data || error) {
+      return (
+        <PanelCover
+          photo={photo}
+          kind={null}
+          where={error ? '날씨를 불러오지 못했어요' : '날씨를 확인하는 중'}
+          headline="오늘은 어디로 떠나 볼까요?"
+        />
+      )
+    }
+    const w = data.weather
+    return (
+      <PanelCover
+        photo={photo}
+        kind={weatherKind(w)}
+        where={`${areaLabel(w)} · ${today.name}`}
+        headline={travelHeadline(w, data.outdoorSuitable, shortAreaName(w.areaName))}
+      />
+    )
+  }
+
   return (
     <div className="stage">
       <KakaoMap
@@ -365,6 +416,7 @@ export default function MainPage({ me, onLogin }: Props) {
         onTab={openTab}
         collapsed={collapsed}
         onToggle={() => setCollapsed((c) => !c)}
+        cover={cover()}
       >
         {selectedId !== null && (
           <PlaceDetail id={selectedId} onBack={backToList} onLoaded={setSelectedPlace} me={me} onLogin={onLogin} />
