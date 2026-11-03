@@ -18,6 +18,7 @@ import type { DayOption } from '../labels.ts'
 import { loadListSearch, saveListSearch } from '../nav.ts'
 
 const PAGE_SIZE = 12
+const NO_AREAS: Area[] = []
 const DEFAULT_REGION = REGIONS[0].code
 const PANEL_KEY = 'galgot.panelCollapsed'
 const TABS = [
@@ -124,7 +125,9 @@ export default function MainPage({ me, onLogin }: Props) {
   const sp = readPlaceId(params.get('sp'))
 
   const [collapsed, setCollapsed] = useState(readCollapsed)
-  const [areas, setAreas] = useState<Area[]>([])
+  // 구·시군 목록은 어느 시도의 것인지와 함께 둔다. 시도가 바뀌면 새 목록이 올 때까지 빈 목록으로 본다
+  const [areaList, setAreaList] = useState<{ region: string; list: Area[] }>({ region: '', list: NO_AREAS })
+  const areas = areaList.region === region ? areaList.list : NO_AREAS
   const [reloadKey, setReloadKey] = useState(0)
   // 날씨기반 추천 탭을 다시 열 때마다 바꿔, 탭 안에 남은 결과와 오류 문구까지 새로 시작한다
   const [tripKey, setTripKey] = useState(0)
@@ -137,8 +140,8 @@ export default function MainPage({ me, onLogin }: Props) {
   const [data, setData] = useState<Recommendation | null>(null)
   const [places, setPlaces] = useState<Place[]>([])
   const [page, setPage] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // 마지막으로 받은 요청의 조건과 오류. 지금 조건과 다르면 불러오는 중이다(오류도 지금 조건의 것만 보인다)
+  const [result, setResult] = useState<{ key: string; error: string | null }>({ key: '', error: null })
   const [loadingMore, setLoadingMore] = useState(false)
   const [moreError, setMoreError] = useState<string | null>(null)
 
@@ -189,10 +192,9 @@ export default function MainPage({ me, onLogin }: Props) {
   // 시도가 바뀌면 그 시도의 구·시군 목록을 다시 받는다
   useEffect(() => {
     let cancelled = false
-    setAreas([])
     fetchAreas(region)
       .then((list) => {
-        if (!cancelled) setAreas(list)
+        if (!cancelled) setAreaList({ region, list })
       })
       .catch(() => {
         // 목록을 못 받아도 시도 전체 추천은 볼 수 있다
@@ -244,28 +246,29 @@ export default function MainPage({ me, onLogin }: Props) {
   }, [selectedPlace, selectedId])
 
   // 조건이 바뀔 때마다 첫 페이지부터 다시 불러온다
+  const loadKey = [region, area, date, type, env, keyword, reloadKey].join('|')
+  const loading = result.key !== loadKey
+  const error = loading ? null : result.error
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    setError(null)
-    setMoreError(null)
     fetchRecommendations({ region, area, date, type, env, keyword, page: 0, size: PAGE_SIZE })
       .then((res) => {
         if (cancelled) return
         setData(res)
         setPlaces(res.places.items)
         setPage(0)
+        setMoreError(null)
+        setResult({ key: loadKey, error: null })
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(messageOf(e))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (cancelled) return
+        setMoreError(null)
+        setResult({ key: loadKey, error: messageOf(e) })
       })
     return () => {
       cancelled = true
     }
-  }, [region, area, date, type, env, keyword, reloadKey])
+  }, [loadKey, region, area, date, type, env, keyword])
 
   // 지도 마커는 목록과 같은 조건으로 페이지 없이 받는다. 실패하면 마커만 비우고 목록은 그대로 쓴다.
   useEffect(() => {
