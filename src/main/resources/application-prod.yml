@@ -1,0 +1,20 @@
+# 배포(운영)용 설정. SPRING_PROFILES_ACTIVE=prod 일 때 application.yml 위에 덮어쓴다.
+# 값(주소, 키, 비밀번호)은 모두 서버의 .env → docker-compose 환경 변수로 들어온다.
+
+app:
+  # 화면 주소(배포 주소). CORS 허용 출처와 로그인 뒤 돌아갈 주소로 쓴다. 끝에 / 를 붙이지 않는다.
+  frontend-url: ${FRONTEND_URL}
+
+server:
+  # Caddy(HTTPS) 뒤에서 동작한다. X-Forwarded-Proto/Host를 읽어
+  # 카카오 로그인 redirect-uri의 {baseUrl}이 https://(배포 주소)가 되게 한다.
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        secure: true        # HTTPS에서만 세션 쿠키를 보낸다
+        same-site: lax
+
+logging:
+  level:
+    org.hibernate.SQL: info  # 운영에서는 SQL 로그를 남기지 않는다
