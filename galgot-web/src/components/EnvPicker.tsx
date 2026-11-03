@@ -1,6 +1,14 @@
-import { Sun, Umbrella } from 'lucide-react'
+import { Building2, Sun, Trees, Umbrella } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import type { Env, EnvChoice } from '../api'
 import { ENV_CHOICES } from '../labels'
+
+/** 버튼 앞 아이콘: 실내는 건물, 실외는 나무, 둘 다는 둘을 함께 */
+const ICONS: Record<EnvChoice, LucideIcon[]> = {
+  INDOOR: [Building2],
+  OUTDOOR: [Trees],
+  ALL: [Building2, Trees],
+}
 
 interface Props {
   value: EnvChoice | null
@@ -33,13 +41,18 @@ export default function EnvPicker({ value, recommended, onChange, disabled = fal
               if (selected !== c.code) onChange(c.code)
             }}
           >
+            <span className="env-icons" aria-hidden="true">
+              {ICONS[c.code].map((Icon, i) => (
+                <Icon key={i} size={16} strokeWidth={2} />
+              ))}
+            </span>
             {c.name}
             {isRecommended && (
               <span className="rec-badge">
                 {recommended === 'INDOOR' ? (
-                  <Umbrella size={16} strokeWidth={2.5} aria-hidden="true" />
+                  <Umbrella size={12} strokeWidth={2.5} aria-hidden="true" />
                 ) : (
-                  <Sun size={16} strokeWidth={2.5} aria-hidden="true" />
+                  <Sun size={12} strokeWidth={2.5} aria-hidden="true" />
                 )}
                 추천
               </span>

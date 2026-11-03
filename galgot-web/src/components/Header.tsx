@@ -16,6 +16,7 @@ export default function Header({ me, onLogin, onLogout }: Props) {
       <h1 className="logo">
         <Link to="/" className="logo-link" onClick={clearListSearch}>
           갈곳
+          <span className="logo-sub">날씨 맞춤 여행</span>
         </Link>
       </h1>
       {me ? (
