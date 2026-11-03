@@ -1,0 +1,15 @@
+# 백엔드 이미지에는 gradle 파일과 src만 필요하다
+.git
+.gradle
+.idea
+.claude
+.vscode
+build
+out
+bin
+galgot-web
+deploy
+docs
+.env
+.env.*
+*.iml
