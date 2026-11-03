@@ -695,6 +695,10 @@ button {
   object-fit: cover;
 }
 
+.stop-photo.is-large {
+  width: 112px;
+}
+
 .stop-photo .photo-fallback svg {
   width: 22px;
   height: 22px;
@@ -1948,34 +1952,53 @@ button {
   list-style: none;
 }
 
+/* 코스 상세의 장소 카드(기획서 18장 H): 큰 사진, 이름·정보 두 줄, 오른쪽 아이콘 버튼 */
 .course-stop {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 12px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 4px 14px;
   align-items: center;
-  padding: 8px;
+  padding: 8px 10px 8px 8px;
   border: 1.5px solid var(--line);
   border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.stop-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stop-body .tile-title {
+  font-size: 1rem;
+}
+
+.stop-meta {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.stop-meta .env {
+  font-weight: 600;
 }
 
 .course-stop-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
 }
 
-/* 편집할 때는 카드 오른쪽 옆에 순서 바꾸기와 삭제 */
-.course-stop.is-editable {
-  grid-template-columns: auto 1fr auto;
+.icon-btn.small {
+  color: var(--muted);
 }
 
-.map-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  width: fit-content;
-  margin-top: 2px;
-  font-size: 0.875rem;
+.icon-btn.danger-icon {
+  color: var(--danger);
+}
+
+.icon-btn.danger-icon:not(:disabled):hover {
+  background: #fdecea;
 }
 
 .small-btn {
@@ -1990,13 +2013,19 @@ button {
   background: var(--danger);
 }
 
+/* 좁은 화면: 아이콘 버튼을 정보 아래 줄로 */
 @media (max-width: 560px) {
-  .course-stop.is-editable {
-    grid-template-columns: auto 1fr;
+  .course-stop {
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .course-stop.is-editable .course-stop-actions {
+  .course-stop-actions {
     grid-column: 2;
+    justify-content: flex-end;
+  }
+
+  .stop-photo.is-large {
+    width: 88px;
   }
 }
 
@@ -2006,8 +2035,8 @@ button {
 }
 
 .icon-btn.small {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
 }
 
 .icon-btn:disabled {

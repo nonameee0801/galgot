@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Place } from '../api'
-import { ENV_LABEL, TYPES, shortAddr, typeName } from '../labels'
+import { ENV_LABEL, TYPES, districtOf, typeName } from '../labels'
 import PhotoFallback from './PhotoFallback'
 
 interface Props {
@@ -19,11 +19,6 @@ interface Props {
   keyword?: string | null
 }
 
-/** "서울특별시 종로구 효자로 12" → "종로구"처럼 주소에서 구·시군만. 없으면 빈 글자 */
-function district(addr: string | null): string {
-  return shortAddr(addr).split(' ')[0] ?? ''
-}
-
 /**
  * 사진 카드(기획서 19장): 위에 사진과 실내/실외 표시, 아래 이름(두 줄까지)과 테마 · 구·시군.
  * 누르면 지도에서 그 장소로 가고 상세가 열린다. 사진이 없으면 실내/실외에 맞춘 그림으로 대신한다.
@@ -32,7 +27,7 @@ function Tile({ place, selected, onSelect }: { place: Place; selected: boolean; 
   const [broken, setBroken] = useState(false)
   const src = place.thumbnailUrl ?? place.imageUrl
   const showImage = src !== null && !broken
-  const where = district(place.addr)
+  const where = districtOf(place.addr)
 
   return (
     <li>

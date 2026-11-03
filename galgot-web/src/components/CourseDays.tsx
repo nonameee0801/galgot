@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ArrowDown, ArrowUp, MapPin, Trash2 } from 'lucide-react'
 import type { CourseDetail, CoursePlaceItem } from '../api'
 import { allDays } from '../course'
-import { DAY_STYLES, ENV_LABEL, shortAddr, typeName } from '../labels'
+import { DAY_STYLES, ENV_LABEL, districtOf, shortAddr, typeName } from '../labels'
 import Modal from './Modal'
 import StopPhoto from './StopPhoto'
 
@@ -33,9 +33,10 @@ function dayLabel(travelDate: string | null, dayNo: number): string | null {
 }
 
 /**
- * 코스의 일차별 장소 목록(기획서 18장 E). 내 코스 상세와 공유 코스 보기가 함께 쓴다.
- * 카드 오른쪽에 순서 바꾸기(↑ ↓)와 [삭제]를 두고, 삭제는 확인 팝업([네] [아니요])을 거친다.
- * [지도에서 보기]는 페이지를 옮기지 않고 코스 지도 팝업을 그 장소가 고른 채로 연다.
+ * 코스의 일차별 장소 목록(기획서 18장 E, H). 내 코스 상세와 공유 코스 보기가 함께 쓴다.
+ * 카드는 큰 사진(위에 방문 순서), 이름, "실외 · 관광지 · 과천시", 주소. 오른쪽에 아이콘 버튼
+ * (지도에서 보기, 내 코스면 순서 바꾸기와 삭제). 삭제는 확인 팝업([네] [아니요])을 거친다.
+ * 지도에서 보기는 페이지를 옮기지 않고 코스 지도 팝업을 그 장소가 고른 채로 연다.
  */
 export default function CourseDays({ course, onShowOnMap, editing }: Props) {
   const [confirming, setConfirming] = useState<CoursePlaceItem | null>(null)
@@ -64,23 +65,31 @@ export default function CourseDays({ course, onShowOnMap, editing }: Props) {
             </h3>
             <ol className="course-stops">
               {day.items.map((item, i) => (
-                <li key={item.id} className={editing ? 'course-stop is-editable' : 'course-stop'}>
-                  <StopPhoto place={item.place} order={item.visitOrder} color={color} />
-                  <span className="tile-body">
+                <li key={item.id} className="course-stop">
+                  <StopPhoto place={item.place} order={item.visitOrder} color={color} large />
+                  <span className="stop-body">
                     <span className="tile-title">{item.place.title}</span>
-                    <span className="addr">{shortAddr(item.place.addr)}</span>
-                    <span className="meta">
+                    <span className="stop-meta">
                       <span className={`env env-${item.place.env}`}>{ENV_LABEL[item.place.env]}</span>
-                      <span>{typeName(item.place.contentTypeId)}</span>
+                      {' · '}
+                      {typeName(item.place.contentTypeId)}
+                      {districtOf(item.place.addr) && ` · ${districtOf(item.place.addr)}`}
                     </span>
+                    <span className="addr">{shortAddr(item.place.addr)}</span>
                     {item.memo && <span className="course-memo">{item.memo}</span>}
-                    <button type="button" className="link-btn map-link" onClick={() => onShowOnMap(item.place.id)}>
-                      <MapPin size={14} aria-hidden="true" />
-                      지도에서 보기
-                    </button>
                   </span>
+                  <span className="course-stop-actions">
+                    <button
+                      type="button"
+                      className="icon-btn small"
+                      aria-label={`${item.place.title} 지도에서 보기`}
+                      title="지도에서 보기"
+                      onClick={() => onShowOnMap(item.place.id)}
+                    >
+                      <MapPin size={17} aria-hidden="true" />
+                    </button>
                   {editing && (
-                    <span className="course-stop-actions">
+                    <>
                       <button
                         type="button"
                         className="icon-btn small"
@@ -103,15 +112,17 @@ export default function CourseDays({ course, onShowOnMap, editing }: Props) {
                       </button>
                       <button
                         type="button"
-                        className="btn-line danger small-btn"
+                        className="icon-btn small danger-icon"
+                        aria-label={`${item.place.title} 삭제`}
+                        title="삭제"
                         disabled={editing.busy}
                         onClick={() => setConfirming(item)}
                       >
-                        <Trash2 size={14} aria-hidden="true" />
-                        삭제
+                        <Trash2 size={17} aria-hidden="true" />
                       </button>
-                    </span>
+                    </>
                   )}
+                  </span>
                 </li>
               ))}
             </ol>

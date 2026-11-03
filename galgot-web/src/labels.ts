@@ -128,6 +128,11 @@ export function shortAddr(addr: string | null): string {
   return addr.replace(/^(서울특별시|경기도)\s*/, '')
 }
 
+/** "서울특별시 종로구 효자로 12" → "종로구"처럼 주소에서 구·시군만. 없으면 빈 글자 */
+export function districtOf(addr: string | null): string {
+  return shortAddr(addr).split(' ')[0] ?? ''
+}
+
 /** 날씨기반 추천의 일정 길이. 날씨 예보가 3일 뒤까지라 2박3일까지만 둔다. */
 export const TRIP_LENGTHS: { days: number; name: string }[] = [
   { days: 1, name: '당일치기' },
