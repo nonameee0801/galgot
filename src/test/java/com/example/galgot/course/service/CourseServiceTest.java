@@ -253,4 +253,70 @@ class CourseServiceTest {
         assertEquals(HttpStatus.BAD_REQUEST, e.getStatusCode());
         assertEquals(1, cp.getDayNo());
     }
+
+    /** 회원 userId의 코스(id). */
+    private static Course courseOf(long id, long userId) {
+        Course course = Course.create(userId, "코스 " + id, "11", TODAY, 1, false);
+        ReflectionTestUtils.setField(course, "id", id);
+        return course;
+    }
+
+    @Test
+    void 내_코스_여러_개를_한_번에_지우고_겹친_id는_하나로_본다() {
+        Course a = courseOf(10L, 1L);
+        Course b = courseOf(11L, 1L);
+        when(courseRepository.findAllById(List.of(10L, 11L))).thenReturn(List.of(a, b));
+
+        service.deleteAll(1L, List.of(10L, 11L, 10L));
+
+        verify(courseRepository).delete(a);
+        verify(courseRepository).delete(b);
+    }
+
+    @Test
+    void 남의_코스가_섞이면_403이고_하나도_지우지_않는다() {
+        when(courseRepository.findAllById(List.of(10L, 20L))).thenReturn(List.of(courseOf(10L, 1L), courseOf(20L, 2L)));
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                () -> service.deleteAll(1L, List.of(10L, 20L)));
+
+        assertEquals(HttpStatus.FORBIDDEN, e.getStatusCode());
+        verify(courseRepository, never()).delete(any());
+    }
+
+    @Test
+    void 없는_코스가_섞이면_404이고_하나도_지우지_않는다() {
+        when(courseRepository.findAllById(List.of(10L, 99L))).thenReturn(List.of(courseOf(10L, 1L)));
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                () -> service.deleteAll(1L, List.of(10L, 99L)));
+
+        assertEquals(HttpStatus.NOT_FOUND, e.getStatusCode());
+        verify(courseRepository, never()).delete(any());
+    }
+
+    @Test
+    void 지울_코스가_없거나_너무_많으면_400() {
+        List<Long> tooMany = java.util.stream.LongStream.rangeClosed(1, CourseService.MAX_BULK_DELETE + 1).boxed().toList();
+
+        ResponseStatusException empty = assertThrows(ResponseStatusException.class,
+                () -> service.deleteAll(1L, List.of()));
+        ResponseStatusException over = assertThrows(ResponseStatusException.class,
+                () -> service.deleteAll(1L, tooMany));
+
+        assertEquals(HttpStatus.BAD_REQUEST, empty.getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, over.getStatusCode());
+        verify(courseRepository, never()).findAllById(any());
+    }
+
+    @Test
+    void 최대_개수까지는_한_번에_지운다() {
+        List<Long> ids = java.util.stream.LongStream.rangeClosed(1, CourseService.MAX_BULK_DELETE).boxed().toList();
+        List<Course> courses = ids.stream().map(id -> courseOf(id, 1L)).toList();
+        when(courseRepository.findAllById(ids)).thenReturn(courses);
+
+        service.deleteAll(1L, ids);
+
+        verify(courseRepository, org.mockito.Mockito.times(CourseService.MAX_BULK_DELETE)).delete(any());
+    }
 }

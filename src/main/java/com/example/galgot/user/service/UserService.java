@@ -109,4 +109,17 @@ public class UserService {
     public Optional<User> find(Long id) {
         return userRepository.findById(id);
     }
+
+    /** 닉네임 바꾸기. 회원이 없으면 401, 규칙에 맞지 않으면 400. */
+    @Transactional
+    public LoginUser changeNickname(Long userId, String nickname) {
+        User user = (userId == null ? Optional.<User>empty() : userRepository.findById(userId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "회원 정보를 찾을 수 없습니다."));
+        try {
+            user.changeNickname(nickname);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+        return new LoginUser(user.getId(), user.getNickname());
+    }
 }

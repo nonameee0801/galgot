@@ -2,6 +2,7 @@ package com.example.galgot.user.controller;
 
 import com.example.galgot.global.auth.CurrentUser;
 import com.example.galgot.user.domain.User;
+import com.example.galgot.user.dto.NicknameRequest;
 import com.example.galgot.user.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -13,6 +14,8 @@ import org.springframework.security.web.authentication.logout.CookieClearingLogo
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -38,6 +41,14 @@ public class UserController {
         User user = userService.find(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "회원 정보를 찾을 수 없습니다."));
         return new MeResponse(user.getId(), user.getNickname());
+    }
+
+    /** 닉네임 바꾸기(기획서 18장 F). 비었거나 50자를 넘으면 400. 세션은 닉네임을 쓰지 않아 고치지 않는다. */
+    @PatchMapping("/me")
+    public MeResponse changeNickname(@AuthenticationPrincipal OAuth2User principal,
+                                     @RequestBody NicknameRequest body) {
+        UserService.LoginUser user = userService.changeNickname(CurrentUser.id(principal), body.nickname());
+        return new MeResponse(user.id(), user.nickname());
     }
 
     /** 회원 탈퇴. 회원과 관련 데이터를 지운 뒤 세션을 끊고 204를 돌려준다. */

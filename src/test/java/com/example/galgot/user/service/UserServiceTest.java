@@ -157,4 +157,35 @@ class UserServiceTest {
         assertEquals(HttpStatus.UNAUTHORIZED, statusOf(e));
         verify(userRepository, never()).deleteById(any());
     }
+
+    @Test
+    void 닉네임을_바꾸면_바뀐_닉네임을_돌려준다() {
+        User user = User.create("여행자", null);
+        when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+
+        UserService.LoginUser result = userService.changeNickname(7L, " 길동 ");
+
+        assertEquals("길동", result.nickname());
+        assertEquals("길동", user.getNickname());
+    }
+
+    @Test
+    void 빈_닉네임으로_바꾸면_400() {
+        when(userRepository.findById(7L)).thenReturn(Optional.of(User.create("여행자", null)));
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                () -> userService.changeNickname(7L, ""));
+
+        assertEquals(HttpStatus.BAD_REQUEST, statusOf(e));
+    }
+
+    @Test
+    void 없는_회원은_닉네임을_바꿀_수_없다() {
+        when(userRepository.findById(7L)).thenReturn(Optional.empty());
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                () -> userService.changeNickname(7L, "길동"));
+
+        assertEquals(HttpStatus.UNAUTHORIZED, statusOf(e));
+    }
 }

@@ -38,6 +38,8 @@ import java.util.stream.Collectors;
 public class CourseService {
 
     static final int MAX_PLACES_PER_COURSE = 50;
+    /** 한 번에 지울 수 있는 코스 수 */
+    static final int MAX_BULK_DELETE = 1000;
 
     private final CourseRepository courseRepository;
     private final PlaceRepository placeRepository;
@@ -117,6 +119,31 @@ public class CourseService {
 
     public void delete(Long userId, Long courseId) {
         courseRepository.delete(getOwned(userId, courseId));
+    }
+
+    /**
+     * 내 코스 여러 개를 한 번에 지운다(기획서 18장 F). 같은 id는 하나로 본다.
+     * 0개이거나 MAX_BULK_DELETE를 넘으면 400, 없는 코스가 있으면 404, 남의 코스가 섞이면 403이고
+     * 이때는 하나도 지우지 않는다(검사를 모두 마친 뒤에 지우고, 한 트랜잭션이다).
+     */
+    public void deleteAll(Long userId, List<Long> ids) {
+        List<Long> unique = ids == null ? List.of() : ids.stream().filter(java.util.Objects::nonNull).distinct().toList();
+        if (unique.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지울 코스를 골라 주세요.");
+        }
+        if (unique.size() > MAX_BULK_DELETE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "한 번에 " + MAX_BULK_DELETE + "개까지 지울 수 있어요.");
+        }
+        List<Course> courses = courseRepository.findAllById(unique);
+        if (courses.size() != unique.size()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "코스를 찾을 수 없습니다.");
+        }
+        if (courses.stream().anyMatch(c -> !c.getUserId().equals(userId))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "내 코스가 아닙니다.");
+        }
+        // 단건 삭제와 같은 방법으로 지워 코스 속 장소도 함께 지워진다
+        courses.forEach(courseRepository::delete);
     }
 
     public CourseDetailResponse addPlace(Long userId, Long courseId, AddPlaceRequest request) {

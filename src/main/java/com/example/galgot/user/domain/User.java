@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Table(name = "users")
 public class User {
 
-    private static final int NICKNAME_MAX = 50;
+    public static final int NICKNAME_MAX = 50;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,6 +54,21 @@ public class User {
 
     public boolean hasPassword() {
         return passwordHash != null && !passwordHash.isEmpty();
+    }
+
+    /**
+     * 닉네임 바꾸기(기획서 18장 F). 앞뒤 공백을 지우고 1~50자만 받는다.
+     * 가입 때와 달리 비우면 "여행자"로 바꾸지 않고 거부한다. 다른 회원과 같은 닉네임은 허용한다.
+     */
+    public void changeNickname(String newNickname) {
+        String name = newNickname == null ? "" : newNickname.trim();
+        if (name.isEmpty()) {
+            throw new IllegalArgumentException("닉네임을 입력해 주세요.");
+        }
+        if (name.length() > NICKNAME_MAX) {
+            throw new IllegalArgumentException("닉네임은 " + NICKNAME_MAX + "자까지 쓸 수 있어요.");
+        }
+        this.nickname = name;
     }
 
     public Long getId() { return id; }

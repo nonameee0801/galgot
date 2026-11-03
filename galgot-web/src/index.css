@@ -1910,3 +1910,87 @@ button {
   margin: 0 0 8px;
   padding-left: 14px;
 }
+
+/* 마이페이지 관리(기획서 18장 F): 닉네임 바꾸기, 코스 선택 모드 */
+.nickname-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.nickname-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 1em;
+}
+
+.nickname-form input {
+  flex: 1 1 200px;
+  min-width: 0;
+  max-width: 320px;
+  padding: 8px 10px;
+  border: 1.5px solid #9aa5b1;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.nickname-count {
+  font-size: 0.8125rem;
+}
+
+.nickname-form .form-error {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.section-head h2 {
+  margin: 0;
+}
+
+.select-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.course-card-select {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.course-card-select input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.course-card-select.is-checked {
+  border-color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.course-card-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fold-btn {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+}

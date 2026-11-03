@@ -309,6 +309,21 @@ export function deleteCourse(courseId: number): Promise<void> {
   return request<void>(`/api/courses/${courseId}`, { method: 'DELETE' })
 }
 
+/** 한 번에 지울 수 있는 코스 수(서버 CourseService.MAX_BULK_DELETE와 같다). */
+export const MAX_BULK_DELETE = 1000
+
+/**
+ * 내 코스 여러 개를 한 번에 지운다. 없는 코스나 남의 코스가 섞이면 하나도 지우지 않는다(기획서 18장 F).
+ * id가 많아도 주소 길이에 걸리지 않게 본문으로 보낸다.
+ */
+export function deleteCourses(courseIds: number[]): Promise<void> {
+  return postJson<void>('/api/courses/delete', { ids: courseIds }, {
+    400: `한 번에 ${MAX_BULK_DELETE}개까지 지울 수 있어요.`,
+    403: '내 코스가 아닌 코스가 섞여 있어 지우지 않았어요.',
+    404: '이미 지워진 코스가 있어 아무것도 지우지 않았어요. 목록을 새로 불러왔어요.',
+  })
+}
+
 /** 마이페이지의 코스 카드(담긴 장소는 없고 개수만) */
 export interface CourseSummary {
   id: number
@@ -462,6 +477,18 @@ export function login(email: string, password: string): Promise<Me> {
 export function withdraw(): Promise<void> {
   return request<void>('/api/users/me', { method: 'DELETE' })
 }
+
+/** 닉네임 바꾸기. 앞뒤 공백을 지우고 1~50자(기획서 18장 F). */
+export function updateNickname(nickname: string): Promise<Me> {
+  return request<Me>(
+    '/api/users/me',
+    { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nickname }) },
+    { 400: '닉네임은 1~50자로 입력해 주세요.' },
+  )
+}
+
+/** 닉네임 최대 길이(서버 User.NICKNAME_MAX와 같다). */
+export const NICKNAME_MAX = 50
 
 /** 화면에서 미리 확인하는 비밀번호 규칙(서버 CredentialPolicy와 같다). */
 export function isValidPassword(pw: string): boolean {

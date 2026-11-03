@@ -4,6 +4,7 @@ import com.example.galgot.course.dto.AddPlaceRequest;
 import com.example.galgot.course.dto.CourseDetailResponse;
 import com.example.galgot.course.dto.CourseRequest;
 import com.example.galgot.course.dto.CourseResponse;
+import com.example.galgot.course.dto.DeleteCoursesRequest;
 import com.example.galgot.course.dto.ReorderRequest;
 import com.example.galgot.course.service.CourseService;
 import com.example.galgot.global.auth.CurrentUser;
@@ -67,6 +68,17 @@ public class CourseController {
     public void delete(@AuthenticationPrincipal OAuth2User principal,
                        @PathVariable("id") Long id) {
         courseService.delete(CurrentUser.id(principal), id);
+    }
+
+    /**
+     * 내 코스 여러 개 지우기(본문 {"ids": [...]}). 남의 코스나 없는 코스가 섞이면 하나도 지우지 않는다(기획서 18장 F).
+     * 주소에 id를 늘어놓으면 길이 제한에 걸릴 수 있어 본문으로 받는다.
+     */
+    @PostMapping("/delete")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteAll(@AuthenticationPrincipal OAuth2User principal,
+                          @RequestBody DeleteCoursesRequest request) {
+        courseService.deleteAll(CurrentUser.id(principal), request.ids());
     }
 
     @PostMapping("/{id}/places")
