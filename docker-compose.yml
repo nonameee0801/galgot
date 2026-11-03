@@ -1,0 +1,73 @@
+# 갈곳 배포: DB(MySQL) + 서버(Spring) + 화면(Caddy, HTTPS)
+# 값은 같은 폴더의 .env 파일에서 읽는다(.env.example 참고, .env는 git에 올리지 않는다).
+# 실행: docker compose up -d --build
+
+services:
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: galgot
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      TZ: Asia/Seoul
+    # 메모리 2GB 서버에 맞춰 버퍼를 작게, 성능 스키마는 끈다
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=128M
+      - --performance-schema=OFF
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    # 바깥으로 포트를 열지 않는다(app만 접속)
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:mysql://db:3306/galgot?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      FRONTEND_URL: ${PUBLIC_URL}
+      KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      TOURAPI_SERVICE_KEY: ${TOURAPI_SERVICE_KEY}
+      KMA_SERVICE_KEY: ${KMA_SERVICE_KEY}
+      COLLECT_RUN_ON_STARTUP: "false"
+      CLASSIFY_RUN_ON_STARTUP: ${CLASSIFY_RUN_ON_STARTUP:-false}
+    # 바깥으로 포트를 열지 않는다(web을 통해서만 받음)
+
+  web:
+    build:
+      context: ./galgot-web
+      args:
+        VITE_API_BASE: ${PUBLIC_URL}
+        VITE_KAKAO_MAP_KEY: ${VITE_KAKAO_MAP_KEY}
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data      # 발급받은 인증서(지우면 다시 발급)
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:
