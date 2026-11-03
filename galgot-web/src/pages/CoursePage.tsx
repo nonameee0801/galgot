@@ -7,6 +7,7 @@ import type { CourseDetail, CoursePlaceItem, Me } from '../api'
 import CourseDays, { ConfirmModal } from '../components/CourseDays'
 import CourseMapModal from '../components/CourseMapModal'
 import { LoginNeeded } from './MyPage'
+import { TRIP_LENGTHS, tripLengthName } from '../labels'
 
 interface Props {
   me: Me | null
@@ -34,6 +35,7 @@ export default function CoursePage({ me, meLoaded, onLogin }: Props) {
   const [editingInfo, setEditingInfo] = useState(false)
   const [title, setTitle] = useState('')
   const [travelDate, setTravelDate] = useState('')
+  const [tripDays, setTripDays] = useState(1)
   const [confirmDelete, setConfirmDelete] = useState(false)
   // 지도 팝업: null이면 닫힘, placeId가 있으면 그 장소를 고른 채로 연다
   const [map, setMap] = useState<{ placeId: number | null } | null>(null)
@@ -109,6 +111,7 @@ export default function CoursePage({ me, meLoaded, onLogin }: Props) {
   function startEdit() {
     setTitle(course.title)
     setTravelDate(course.travelDate ?? '')
+    setTripDays(course.tripDays)
     setEditingInfo(true)
   }
 
@@ -120,7 +123,7 @@ export default function CoursePage({ me, meLoaded, onLogin }: Props) {
       return
     }
     void run(
-      () => updateCourse({ ...course, title: nextTitle, travelDate: travelDate === '' ? null : travelDate }),
+      () => updateCourse({ ...course, title: nextTitle, travelDate: travelDate === '' ? null : travelDate, tripDays }),
       '코스 정보를 바꿨어요.',
     ).then((ok) => {
       if (ok) setEditingInfo(false)
@@ -161,6 +164,28 @@ export default function CoursePage({ me, meLoaded, onLogin }: Props) {
               <span className="field-label">여행 날짜(1일차)</span>
               <input type="date" value={travelDate} onChange={(e) => setTravelDate(e.target.value)} />
             </label>
+            <div>
+              <span className="field-label">일정</span>
+              <div className="regions" role="group" aria-label="일정">
+                {TRIP_LENGTHS.map((t) => {
+                  // 장소가 든 일차보다 짧게는 줄일 수 없다(서버도 400)
+                  const tooShort = course.places.some((p) => p.dayNo > t.days)
+                  return (
+                    <button
+                      key={t.days}
+                      type="button"
+                      className="seg"
+                      aria-pressed={t.days === tripDays}
+                      disabled={tooShort}
+                      title={tooShort ? '뒤 일차에 장소가 있어 줄일 수 없어요' : undefined}
+                      onClick={() => setTripDays(t.days)}
+                    >
+                      {t.name}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
             <div className="course-edit-actions">
               <button type="submit" className="btn-more" disabled={busy}>
                 저장
@@ -175,8 +200,9 @@ export default function CoursePage({ me, meLoaded, onLogin }: Props) {
             <h1 className="page-title">{course.title}</h1>
             <p className="meta">
               <span>{course.travelDate ? `${course.travelDate} 출발` : '여행 날짜 없음'}</span>
+              <span>{tripLengthName(course.tripDays)}</span>
               <button type="button" className="link-btn" onClick={startEdit} disabled={busy}>
-                이름·날짜 바꾸기
+                이름·날짜·일정 바꾸기
               </button>
             </p>
           </>

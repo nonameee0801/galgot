@@ -4,7 +4,7 @@ import { ArrowLeft, Map as MapIcon } from 'lucide-react'
 import { ApiError, fetchCourse, fetchCourses } from '../api'
 import type { CourseDetail, CourseSummary, Me } from '../api'
 import CourseMapModal from '../components/CourseMapModal'
-import { REGIONS } from '../labels'
+import { REGIONS, tripLengthName } from '../labels'
 
 interface Props {
   me: Me | null
@@ -120,7 +120,7 @@ export default function MyPage({ me, meLoaded, onLogin, onWithdraw }: Props) {
                             {region && <span>{region}</span>}
                             {travel && <span>{travel} 출발</span>}
                             <span>
-                              장소 {c.placeCount}곳{c.dayCount > 1 ? ` · ${c.dayCount}일` : ''}
+                              장소 {c.placeCount}곳 · {tripLengthName(c.tripDays)}
                             </span>
                             <span>{shortDate(c.createdAt)} 만듦</span>
                           </span>

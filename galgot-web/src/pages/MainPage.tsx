@@ -363,7 +363,9 @@ export default function MainPage({ me, onLogin }: Props) {
         collapsed={collapsed}
         onToggle={() => setCollapsed((c) => !c)}
       >
-        {selectedId !== null && <PlaceDetail id={selectedId} onBack={backToList} onLoaded={setSelectedPlace} />}
+        {selectedId !== null && (
+          <PlaceDetail id={selectedId} onBack={backToList} onLoaded={setSelectedPlace} me={me} onLogin={onLogin} />
+        )}
 
         {/* 상세를 보는 동안에도 탭 내용은 숨겨 둔 채 유지한다(더 불러온 장소, 스크롤, 추천 결과가 그대로 남게) */}
         {tab === 'trip' ? (

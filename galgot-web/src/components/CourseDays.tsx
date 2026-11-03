@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ArrowDown, ArrowUp, MapPin, Trash2 } from 'lucide-react'
 import type { CourseDetail, CoursePlaceItem } from '../api'
-import { groupByDay } from '../course'
+import { allDays } from '../course'
 import { DAY_STYLES, ENV_LABEL, shortAddr, typeName } from '../labels'
 import Modal from './Modal'
 
@@ -38,17 +38,24 @@ function dayLabel(travelDate: string | null, dayNo: number): string | null {
  */
 export default function CourseDays({ course, onShowOnMap, editing }: Props) {
   const [confirming, setConfirming] = useState<CoursePlaceItem | null>(null)
-  const days = groupByDay(course.places)
-
-  if (days.length === 0) {
-    return <p className="muted">아직 담긴 장소가 없어요.</p>
-  }
+  // 일정의 모든 일차를 보여 주고, 장소가 없는 일차는 안내만 한다(기획서 18장 D)
+  const days = allDays(course.places, course.tripDays)
 
   return (
     <div className="course-days">
       {days.map((day, dayIndex) => {
         const date = dayLabel(course.travelDate, day.dayNo)
         const color = DAY_STYLES[dayIndex % DAY_STYLES.length].color
+        if (day.items.length === 0) {
+          return (
+            <section key={day.dayNo} className="course-day" aria-label={`${day.dayNo}일차`}>
+              <h3 className="course-day-title" style={{ borderLeftColor: color }}>
+                {day.dayNo}일차{date && <span className="muted"> · {date}</span>}
+              </h3>
+              <p className="muted course-day-empty">아직 담은 장소가 없어요.</p>
+            </section>
+          )
+        }
         return (
           <section key={day.dayNo} className="course-day" aria-label={`${day.dayNo}일차`}>
             <h3 className="course-day-title" style={{ borderLeftColor: color }}>
