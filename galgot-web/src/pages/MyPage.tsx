@@ -145,7 +145,6 @@ export default function MyPage({ me, meLoaded, onLogin, onWithdraw }: Props) {
 
             <section className="page-section" aria-labelledby="my-account">
               <h2 id="my-account">계정</h2>
-              <p className="muted">탈퇴하면 저장한 코스를 포함해 모든 정보가 지워져요.</p>
               <button type="button" className="btn-line danger" onClick={onWithdraw}>
                 회원 탈퇴
               </button>
