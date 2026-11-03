@@ -1964,6 +1964,72 @@ button {
   background: var(--bg);
 }
 
+/* 내 코스: 왼쪽 손잡이(⋮⋮)를 끌어 순서와 일차를 옮긴다(기획서 18장 H) */
+.course-stop.is-editable {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  padding-left: 2px;
+}
+
+.drag-handle {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--faint);
+  cursor: grab;
+  touch-action: none;
+}
+
+.drag-handle:not(:disabled):hover {
+  background: var(--soft);
+  color: var(--accent);
+}
+
+.drag-handle:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+/* 끄는 동안 원래 자리는 점선 칸 */
+.course-stop.is-placeholder {
+  border: 2px dashed #9cc9cb;
+  background: var(--accent-soft);
+}
+
+.course-stop.is-placeholder > * {
+  visibility: hidden;
+}
+
+/* 손에 들린 카드 */
+.course-stop.is-lifted {
+  border-color: var(--accent);
+  box-shadow: 0 12px 28px rgba(10, 40, 50, 0.22);
+  transform: rotate(-1deg);
+  cursor: grabbing;
+}
+
+.course-stops.is-empty {
+  min-height: 56px;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius);
+  align-content: center;
+}
+
+.course-stops.is-empty .course-day-empty {
+  margin: 0;
+  padding: 12px 14px;
+  list-style: none;
+}
+
+.course-stops.is-over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .stop-body {
   display: grid;
   gap: 2px;
@@ -2022,6 +2088,14 @@ button {
   .course-stop-actions {
     grid-column: 2;
     justify-content: flex-end;
+  }
+
+  .course-stop.is-editable {
+    grid-template-columns: auto auto minmax(0, 1fr);
+  }
+
+  .course-stop.is-editable .course-stop-actions {
+    grid-column: 3;
   }
 
   .stop-photo.is-large {

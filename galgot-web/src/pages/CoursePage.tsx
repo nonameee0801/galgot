@@ -90,18 +90,9 @@ export default function CoursePage({ me, meLoaded, onLogin }: Props) {
   const course = load.course
   const shareUrl = `${window.location.origin}/s/${course.shareCode}`
 
-  /** 같은 일차의 바로 위(아래) 장소와 순서를 맞바꾼다 */
-  function move(item: CoursePlaceItem, step: -1 | 1) {
-    const day = course.places.filter((p) => p.dayNo === item.dayNo)
-    const i = day.findIndex((p) => p.id === item.id)
-    const other = day[i + step]
-    if (!other) return
-    void run(() =>
-      reorderCourse(course.id, [
-        { coursePlaceId: item.id, dayNo: item.dayNo, visitOrder: other.visitOrder },
-        { coursePlaceId: other.id, dayNo: other.dayNo, visitOrder: item.visitOrder },
-      ]),
-    )
+  /** 끌어 옮긴 결과(바뀐 항목만)를 한 번에 저장한다(기획서 18장 H). 실패하면 카드가 원래 자리로 돌아간다 */
+  function reorder(changes: { coursePlaceId: number; dayNo: number; visitOrder: number }[]): Promise<boolean> {
+    return run(() => reorderCourse(course.id, changes))
   }
 
   function remove(item: CoursePlaceItem) {
@@ -232,7 +223,7 @@ export default function CoursePage({ me, meLoaded, onLogin }: Props) {
       <CourseDays
         course={course}
         onShowOnMap={(placeId) => setMap({ placeId })}
-        editing={{ onMove: move, onRemove: remove, busy }}
+        editing={{ onReorder: reorder, onRemove: remove, busy }}
       />
 
       <section className="page-section course-danger" aria-label="코스 삭제">
