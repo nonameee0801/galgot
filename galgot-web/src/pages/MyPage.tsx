@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router'
 import { ArrowLeft, Map as MapIcon } from 'lucide-react'
-import { ApiError, NICKNAME_MAX, fetchCourse, fetchCourses, updateNickname } from '../api'
+import { ApiError, MAX_BULK_DELETE, NICKNAME_MAX, deleteCourses, fetchCourse, fetchCourses, updateNickname } from '../api'
 import type { CourseDetail, CourseSummary, Me } from '../api'
+import { ConfirmModal } from '../components/CourseDays'
 import CourseMapModal from '../components/CourseMapModal'
 import { REGIONS, tripLengthName } from '../labels'
 
@@ -18,6 +19,9 @@ interface Props {
 }
 
 type Courses = { kind: 'loading' } | { kind: 'ready'; list: CourseSummary[] } | { kind: 'error'; message: string }
+
+/** 코스가 이보다 많으면 처음에는 이만큼만 보여 주고 [N개 더 보기]로 펼친다(기획서 18장 F) */
+const FOLDED_COUNT = 5
 
 function shortDate(date: string | null): string | null {
   if (date === null) return null
@@ -123,14 +127,24 @@ function NicknameRow({ me, onMeChange }: { me: Me; onMeChange: (me: Me) => void 
 }
 
 /**
- * 마이페이지(/my, 기획서 18장 E·F): 내 정보(닉네임 바꾸기), 내 코스 목록, 회원 탈퇴.
+ * 마이페이지(/my, 기획서 18장 E·F): 내 정보(닉네임 바꾸기), 내 코스 목록(골라서 한 번에 지우기), 회원 탈퇴.
  * 코스 카드를 누르면 내 코스 상세(/my/courses/:id)로 가고, [지도로 보기]는 그 코스를 지도 팝업으로 연다.
+ * [선택]을 누르면 선택 모드가 되어, 카드를 눌러 고르고 [선택 삭제]로 지운다.
  */
 export default function MyPage({ me, meLoaded, onLogin, onWithdraw, onMeChange }: Props) {
   const [courses, setCourses] = useState<Courses>({ kind: 'loading' })
+  const [reloadKey, setReloadKey] = useState(0)
   const [mapCourse, setMapCourse] = useState<CourseDetail | null>(null)
   const [opening, setOpening] = useState<number | null>(null)
   const [mapError, setMapError] = useState<string | null>(null)
+  // 선택 모드(기획서 18장 F)
+  const [selecting, setSelecting] = useState(false)
+  const [selected, setSelected] = useState<Set<number>>(() => new Set())
+  const [confirming, setConfirming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState(false)
   const userId = me?.id ?? null
 
   useEffect(() => {
@@ -148,7 +162,14 @@ export default function MyPage({ me, meLoaded, onLogin, onWithdraw, onMeChange }
     return () => {
       cancelled = true
     }
-  }, [userId])
+  }, [userId, reloadKey])
+
+  // "코스 N개를 지웠어요"는 잠깐만 보여 준다
+  useEffect(() => {
+    if (notice === null) return
+    const timer = window.setTimeout(() => setNotice(null), 4000)
+    return () => window.clearTimeout(timer)
+  }, [notice])
 
   /** 카드에는 담긴 장소가 없어서, 지도 팝업을 열 때 코스 상세를 받아 온다 */
   async function openMap(courseId: number) {
@@ -160,6 +181,62 @@ export default function MyPage({ me, meLoaded, onLogin, onWithdraw, onMeChange }
       setMapError(e instanceof ApiError ? e.message : '코스를 불러오지 못했어요.')
     } finally {
       setOpening(null)
+    }
+  }
+
+  const list = courses.kind === 'ready' ? courses.list : []
+  const allSelected = list.length > 0 && list.every((c) => selected.has(c.id))
+  const foldable = list.length > FOLDED_COUNT
+  const shown = foldable && !expanded ? list.slice(0, FOLDED_COUNT) : list
+
+  function startSelecting() {
+    setSelecting(true)
+    setSelected(new Set())
+    setDeleteError(null)
+    setNotice(null)
+  }
+
+  function stopSelecting() {
+    setSelecting(false)
+    setSelected(new Set())
+    setDeleteError(null)
+  }
+
+  function toggle(courseId: number) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(courseId)) next.delete(courseId)
+      else next.add(courseId)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(list.map((c) => c.id)))
+  }
+
+  async function removeSelected() {
+    const ids = [...selected]
+    if (ids.length > MAX_BULK_DELETE) {
+      setConfirming(false)
+      setDeleteError(`한 번에 ${MAX_BULK_DELETE}개까지 지울 수 있어요. 지금 ${ids.length}개를 골랐어요.`)
+      return
+    }
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteCourses(ids)
+      setConfirming(false)
+      stopSelecting()
+      setNotice(`코스 ${ids.length}개를 지웠어요.`)
+    } catch (e) {
+      setConfirming(false)
+      setSelected(new Set())
+      setDeleteError(e instanceof ApiError ? e.message : '코스를 지우지 못했어요.')
+    } finally {
+      setDeleting(false)
+      // 성공이든 실패든 서버의 지금 목록으로 맞춘다
+      setReloadKey((k) => k + 1)
     }
   }
 
@@ -184,31 +261,78 @@ export default function MyPage({ me, meLoaded, onLogin, onWithdraw, onMeChange }
             </section>
 
             <section className="page-section" aria-labelledby="my-courses">
-              <h2 id="my-courses">내 코스</h2>
+              <div className="section-head">
+                <h2 id="my-courses">내 코스</h2>
+                {list.length > 0 &&
+                  (selecting ? (
+                    <div className="select-bar">
+                      <button type="button" className="btn-line" onClick={toggleAll}>
+                        {allSelected ? '전체 해제' : `전체 선택(${list.length})`}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-more danger-fill"
+                        onClick={() => setConfirming(true)}
+                        disabled={selected.size === 0 || deleting}
+                      >
+                        선택 삭제({selected.size})
+                      </button>
+                      <button type="button" className="btn-line" onClick={stopSelecting} disabled={deleting}>
+                        취소
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" className="btn-line" onClick={startSelecting}>
+                      선택
+                    </button>
+                  ))}
+              </div>
+              {notice && (
+                <p className="muted" role="status">
+                  {notice}
+                </p>
+              )}
+              {deleteError && <p role="alert">{deleteError}</p>}
               {courses.kind === 'loading' && <p className="muted">불러오는 중이에요</p>}
               {courses.kind === 'error' && <p role="alert">{courses.message}</p>}
-              {courses.kind === 'ready' && courses.list.length === 0 && (
+              {courses.kind === 'ready' && list.length === 0 && (
                 <p className="muted">
                   아직 저장한 코스가 없어요. 날씨기반 추천에서 코스를 받아 [내 코스에 저장]을 눌러 보세요.
                 </p>
               )}
-              {courses.kind === 'ready' && courses.list.length > 0 && (
+              {list.length > 0 && (
                 <ul className="course-cards">
-                  {courses.list.map((c) => {
+                  {shown.map((c) => {
                     const region = REGIONS.find((r) => r.code === c.ldongRegnCd)?.name
                     const travel = shortDate(c.travelDate)
+                    const body = (
+                      <>
+                        <strong className="course-card-title">{c.title}</strong>
+                        <span className="meta">
+                          {region && <span>{region}</span>}
+                          {travel && <span>{travel} 출발</span>}
+                          <span>
+                            장소 {c.placeCount}곳 · {tripLengthName(c.tripDays)}
+                          </span>
+                          <span>{shortDate(c.createdAt)} 만듦</span>
+                        </span>
+                      </>
+                    )
+                    if (selecting) {
+                      const checked = selected.has(c.id)
+                      return (
+                        <li key={c.id}>
+                          <label className={`course-card course-card-select${checked ? ' is-checked' : ''}`}>
+                            <input type="checkbox" checked={checked} onChange={() => toggle(c.id)} />
+                            <span className="course-card-body">{body}</span>
+                          </label>
+                        </li>
+                      )
+                    }
                     return (
                       <li key={c.id} className="course-card-row">
                         <Link className="course-card" to={`/my/courses/${c.id}`}>
-                          <strong className="course-card-title">{c.title}</strong>
-                          <span className="meta">
-                            {region && <span>{region}</span>}
-                            {travel && <span>{travel} 출발</span>}
-                            <span>
-                              장소 {c.placeCount}곳 · {tripLengthName(c.tripDays)}
-                            </span>
-                            <span>{shortDate(c.createdAt)} 만듦</span>
-                          </span>
+                          {body}
                         </Link>
                         <button
                           type="button"
@@ -225,6 +349,16 @@ export default function MyPage({ me, meLoaded, onLogin, onWithdraw, onMeChange }
                   })}
                 </ul>
               )}
+              {foldable && (
+                <button
+                  type="button"
+                  className="btn-line fold-btn"
+                  onClick={() => setExpanded((v) => !v)}
+                  aria-expanded={expanded}
+                >
+                  {expanded ? '접기' : `${list.length - FOLDED_COUNT}개 더 보기`}
+                </button>
+              )}
               {mapError && <p role="alert">{mapError}</p>}
             </section>
 
@@ -238,6 +372,15 @@ export default function MyPage({ me, meLoaded, onLogin, onWithdraw, onMeChange }
         )}
       </div>
       {mapCourse && <CourseMapModal course={mapCourse} onClose={() => setMapCourse(null)} />}
+      {confirming && (
+        <ConfirmModal
+          title="코스 삭제"
+          message={`선택한 코스 ${selected.size}개를 지울까요? 지운 코스는 되돌릴 수 없어요.`}
+          onYes={removeSelected}
+          onNo={() => setConfirming(false)}
+          busy={deleting}
+        />
+      )}
     </main>
   )
 }

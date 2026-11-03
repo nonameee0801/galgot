@@ -309,6 +309,21 @@ export function deleteCourse(courseId: number): Promise<void> {
   return request<void>(`/api/courses/${courseId}`, { method: 'DELETE' })
 }
 
+/** 한 번에 지울 수 있는 코스 수(서버 CourseService.MAX_BULK_DELETE와 같다). */
+export const MAX_BULK_DELETE = 1000
+
+/**
+ * 내 코스 여러 개를 한 번에 지운다. 없는 코스나 남의 코스가 섞이면 하나도 지우지 않는다(기획서 18장 F).
+ * id가 많아도 주소 길이에 걸리지 않게 본문으로 보낸다.
+ */
+export function deleteCourses(courseIds: number[]): Promise<void> {
+  return postJson<void>('/api/courses/delete', { ids: courseIds }, {
+    400: `한 번에 ${MAX_BULK_DELETE}개까지 지울 수 있어요.`,
+    403: '내 코스가 아닌 코스가 섞여 있어 지우지 않았어요.',
+    404: '이미 지워진 코스가 있어 아무것도 지우지 않았어요. 목록을 새로 불러왔어요.',
+  })
+}
+
 /** 마이페이지의 코스 카드(담긴 장소는 없고 개수만) */
 export interface CourseSummary {
   id: number
