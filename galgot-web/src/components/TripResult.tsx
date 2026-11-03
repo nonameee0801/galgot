@@ -4,6 +4,7 @@ import { Sun, Umbrella } from 'lucide-react'
 import { ApiError, addCoursePlace, createCourse, deleteCourse } from '../api'
 import type { Me, Trip } from '../api'
 import { DAY_STYLES, ENV_LABEL, REGIONS, shortAddr, tripLengthName, typeName } from '../labels'
+import StopPhoto from './StopPhoto'
 
 interface Props {
   trip: Trip
@@ -142,9 +143,8 @@ export default function TripResult({ trip, me, onLogin, selectedId, onSelect, on
                 aria-current={stop.place.id === selectedId ? 'true' : undefined}
                 onClick={() => onSelect(stop.place.id)}
               >
-                <span className="stop-no" style={{ background: DAY_STYLES[active % DAY_STYLES.length].color }}>
-                  {stop.order}
-                </span>
+                {/* 사진 위 왼쪽 위에 일차 색 방문 순서(지도의 번호 핀과 같은 색) */}
+                <StopPhoto place={stop.place} order={stop.order} color={DAY_STYLES[active % DAY_STYLES.length].color} />
                 <span className="tile-body">
                   <span className="tile-title">{stop.place.title}</span>
                   <span className="addr">{shortAddr(stop.place.addr)}</span>

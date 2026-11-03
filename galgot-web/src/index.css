@@ -147,6 +147,26 @@ button {
   color: var(--accent);
 }
 
+/* 채운 버튼: 화면에서 가장 중요한 동작 하나 */
+.btn-fill {
+  padding: 6px 14px;
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  transition: background-color 0.15s ease;
+}
+
+.btn-fill:not(:disabled):hover {
+  background: var(--accent-strong);
+}
+
+.btn-fill:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* 아이콘만 있는 둥근 버튼 (패널 접기, 날씨 카드 접기) */
 .icon-btn {
   display: grid;
@@ -471,9 +491,9 @@ button {
 }
 
 .field-label {
-  color: var(--muted);
+  color: var(--ink);
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* 실내·실외 버튼과 테마 버튼은 이름표 바로 아래에 붙인다. 테마는 4개를 같은 크기로 한 줄에 */
@@ -571,9 +591,10 @@ button {
 
 .trip-notice {
   margin: 10px 0 0;
-  padding: 8px 10px;
-  border-left: 3px solid var(--accent);
-  background: var(--soft);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: #fdf3e6;
+  color: #6b4207;
   font-size: 0.875rem;
 }
 
@@ -612,6 +633,7 @@ button {
 
 .day-tab[aria-selected='true'] {
   color: var(--ink);
+  font-weight: 800;
 }
 
 .day-date {
@@ -631,40 +653,77 @@ button {
   list-style: none;
 }
 
+/* 방문 순서 카드(기획서 19장): 왼쪽 사진(위에 번호), 오른쪽 이름·주소·실내외 */
 .stop {
   display: flex;
   gap: 12px;
-  align-items: flex-start;
+  align-items: center;
   width: 100%;
-  padding: 10px;
-  border: 1.5px solid transparent;
-  border-radius: 10px;
-  background: var(--soft);
+  padding: 8px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
   color: var(--ink);
   text-align: left;
+  transition: border-color 0.15s ease;
+}
+
+.stop:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
 }
 
 .stop.is-selected {
-  border-color: var(--ink);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.stop-photo {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 88px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  aspect-ratio: 4 / 3;
+  background: var(--soft);
+}
+
+.stop-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.stop-photo .photo-fallback svg {
+  width: 22px;
+  height: 22px;
 }
 
 .stop-no {
+  position: absolute;
+  top: 5px;
+  left: 5px;
   display: inline-flex;
-  flex: none;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #fff;
   border-radius: 50%;
+  background: var(--accent);
   color: #fff;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 800;
 }
 
 .nearby {
-  padding: 0 6px;
-  border: 1px solid var(--muted);
+  padding: 0 7px;
   border-radius: 999px;
+  background: #fdf3e6;
+  color: #6b4207;
   font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .trip-foot {
@@ -684,10 +743,9 @@ button {
   max-height: calc(100% - 2 * var(--float-gap));
   overflow-y: auto;
   padding: 12px 12px 14px 16px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--bg);
   box-shadow: var(--float-shadow);
-  transition: background-color 0.6s ease;
 }
 
 .twp-head {
@@ -724,8 +782,8 @@ button {
 
 .twp-day {
   padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--soft);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
 }
 
 .twp-day-title {
@@ -1259,23 +1317,33 @@ button {
   text-decoration: none;
 }
 
+/* 장소 상세 사진: 패널 안에서는 패널 폭 가득(기획서 19장) */
 .detail-photo {
   margin: 4px 0 0;
+  overflow: hidden;
+  border-radius: var(--radius);
+  aspect-ratio: 16 / 10;
+  background: var(--soft);
+}
+
+.panel .detail-photo {
+  margin: 4px -20px 0;
+  border-radius: 0;
 }
 
 .detail-photo img {
   display: block;
   width: 100%;
-  border-radius: 8px;
-  aspect-ratio: 4 / 3;
+  height: 100%;
   object-fit: cover;
-  background: var(--soft);
 }
 
 .detail-title {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   font-size: 1.375rem;
+  font-weight: 800;
   line-height: 1.3;
+  letter-spacing: -0.03em;
 }
 
 .detail-addr {
@@ -1291,15 +1359,19 @@ button {
 }
 
 .detail-buttons {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
+  margin-top: 4px;
 }
 
-.detail-buttons .btn-line {
+.detail-buttons .btn-line,
+.detail-buttons .btn-fill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  padding: 9px 12px;
   font-size: 0.875rem;
 }
 
@@ -1338,8 +1410,8 @@ button {
   display: grid;
   gap: 8px;
   margin: 0;
-  padding: 12px 14px;
-  border-radius: 10px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
   background: var(--soft);
 }
 
@@ -1824,8 +1896,9 @@ button {
 .course-day-title {
   margin: 0 0 8px;
   padding-left: 10px;
-  border-left: 4px solid var(--ink);
+  border-left: 4px solid var(--accent);
   font-size: 1rem;
+  font-weight: 800;
 }
 
 .course-stops {
@@ -1839,11 +1912,11 @@ button {
 .course-stop {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 4px 10px;
-  align-items: start;
-  padding: 10px 12px;
-  border: 1px solid var(--soft);
-  border-radius: 8px;
+  gap: 4px 12px;
+  align-items: center;
+  padding: 8px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
 }
 
 .course-stop-actions {

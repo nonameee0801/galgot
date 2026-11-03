@@ -4,6 +4,7 @@ import type { CourseDetail, CoursePlaceItem } from '../api'
 import { allDays } from '../course'
 import { DAY_STYLES, ENV_LABEL, shortAddr, typeName } from '../labels'
 import Modal from './Modal'
+import StopPhoto from './StopPhoto'
 
 interface Editing {
   /** 같은 일차 안에서 한 칸 위(-1)나 아래(+1)로 */
@@ -64,9 +65,7 @@ export default function CourseDays({ course, onShowOnMap, editing }: Props) {
             <ol className="course-stops">
               {day.items.map((item, i) => (
                 <li key={item.id} className={editing ? 'course-stop is-editable' : 'course-stop'}>
-                  <span className="stop-no" style={{ background: color }}>
-                    {item.visitOrder}
-                  </span>
+                  <StopPhoto place={item.place} order={item.visitOrder} color={color} />
                   <span className="tile-body">
                     <span className="tile-title">{item.place.title}</span>
                     <span className="addr">{shortAddr(item.place.addr)}</span>

@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { ArrowLeft, BookmarkPlus, ExternalLink, Share2 } from 'lucide-react'
 import { ApiError, fetchPlace, fetchPlaceInfo } from '../api'
 import type { Me, Place, PlaceInfo } from '../api'
+import PhotoFallback from './PhotoFallback'
 import AddToCourseModal from './AddToCourseModal'
 import type { Added } from './AddToCourseModal'
 import { ENV_LABEL, shortAddr, typeName } from '../labels'
@@ -92,7 +93,7 @@ function DetailActions({
           공유하기
         </button>
         {!hideAddToCourse && (
-          <button type="button" className="btn-line" onClick={onAddToCourse}>
+          <button type="button" className="btn-fill" onClick={onAddToCourse}>
             <BookmarkPlus size={16} aria-hidden="true" />
             나만의 코스에 넣기
           </button>
@@ -286,11 +287,16 @@ export default function PlaceDetail({ id, onBack, onLoaded, me = null, onLogin, 
           {(() => {
             const p = current.place
             const src = p.imageUrl ?? p.thumbnailUrl
-            return src !== null && brokenImage !== p.id ? (
+            // 사진이 없으면 실내/실외 그림으로 자리를 채운다(기획서 19장)
+            return (
               <figure className="detail-photo">
-                <img src={src} alt={`${p.title} 사진`} onError={() => setBrokenImage(p.id)} />
+                {src !== null && brokenImage !== p.id ? (
+                  <img src={src} alt={`${p.title} 사진`} onError={() => setBrokenImage(p.id)} />
+                ) : (
+                  <PhotoFallback env={p.env} />
+                )}
               </figure>
-            ) : null
+            )
           })()}
           <h3 className="detail-title">{current.place.title}</h3>
           <p className="meta">
