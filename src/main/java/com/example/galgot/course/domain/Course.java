@@ -39,6 +39,10 @@ public class Course {
     @Column(name = "travel_date")
     private LocalDate travelDate;
 
+    /** 일정: 당일치기 1, 1박2일 2, 2박3일 3 (V8). 장소는 이 일차 안에만 담을 수 있다 */
+    @Column(name = "trip_days", nullable = false, columnDefinition = "TINYINT")
+    private int tripDays = 1;
+
     /** true면 공유 링크(shareCode)로 누구나 볼 수 있다 */
     @Column(name = "is_public", nullable = false)
     private boolean publicCourse;
@@ -145,6 +149,7 @@ public class Course {
     public String getTitle() { return title; }
     public String getLdongRegnCd() { return ldongRegnCd; }
     public LocalDate getTravelDate() { return travelDate; }
+    public int getTripDays() { return tripDays; }
     public boolean isPublicCourse() { return publicCourse; }
     public String getShareCode() { return shareCode; }
     public LocalDateTime getCreatedAt() { return createdAt; }
