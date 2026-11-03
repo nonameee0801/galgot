@@ -11,4 +11,7 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     List<Course> findAllByUserIdOrderByCreatedAtDesc(Long userId);
 
     Optional<Course> findByShareCode(String shareCode);
+
+    /** 회원의 코스 수(회원당 상한 확인용, 기획서 18장 G) */
+    long countByUserId(Long userId);
 }

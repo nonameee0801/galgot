@@ -11,6 +11,8 @@ import com.example.galgot.course.repository.CourseRepository;
 import com.example.galgot.infra.tourapi.TourPlaceItem;
 import com.example.galgot.place.domain.Place;
 import com.example.galgot.place.repository.PlaceRepository;
+import com.example.galgot.user.domain.User;
+import com.example.galgot.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,13 +50,18 @@ class CourseServiceTest {
     CourseRepository courseRepository;
     @Mock
     PlaceRepository placeRepository;
+    @Mock
+    UserRepository userRepository;
 
     CourseService service;
 
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(ZonedDateTime.of(2026, 11, 3, 9, 0, 0, 0, SEOUL).toInstant(), SEOUL);
-        service = new CourseService(courseRepository, placeRepository, clock);
+        service = new CourseService(courseRepository, placeRepository, userRepository, clock);
+        // 회원은 있고 코스는 0개인 것이 기본(코스 수 상한, 기획서 18장 G). 상한을 보지 않는 테스트에서는 쓰이지 않는다
+        org.mockito.Mockito.lenient().when(userRepository.findByIdForUpdate(org.mockito.ArgumentMatchers.anyLong()))
+                .thenReturn(Optional.of(User.create("여행자", null)));
     }
 
     private static Place savedPlace(long id, String title) {
@@ -318,5 +325,56 @@ class CourseServiceTest {
         service.deleteAll(1L, ids);
 
         verify(courseRepository, org.mockito.Mockito.times(CourseService.MAX_BULK_DELETE)).delete(any());
+    }
+
+    @Test
+    void 코스가_상한보다_하나_적으면_만들_수_있다() {
+        when(courseRepository.countByUserId(1L)).thenReturn((long) CourseService.MAX_COURSES_PER_USER - 1);
+
+        service.create(1L, newCourse(TODAY, 1, null, null));
+
+        verify(courseRepository).saveAndFlush(any(Course.class));
+    }
+
+    @Test
+    void 코스가_상한이면_만들기는_409이고_저장하지_않는다() {
+        when(courseRepository.countByUserId(1L)).thenReturn((long) CourseService.MAX_COURSES_PER_USER);
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                () -> service.create(1L, newCourse(TODAY, 1, null, null)));
+
+        assertEquals(HttpStatus.CONFLICT, e.getStatusCode());
+        verify(courseRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void 코스가_상한이면_공유_코스_복사도_409() {
+        Course shared = Course.create(2L, "남의 코스", "11", TODAY, 1, false);
+        when(courseRepository.findByShareCode("abc")).thenReturn(Optional.of(shared));
+        when(courseRepository.countByUserId(1L)).thenReturn((long) CourseService.MAX_COURSES_PER_USER);
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class, () -> service.copyShared(1L, "abc"));
+
+        assertEquals(HttpStatus.CONFLICT, e.getStatusCode());
+        verify(courseRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void 코스를_세기_전에_회원_행을_잠근다() {
+        service.create(1L, newCourse(TODAY, 1, null, null));
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(userRepository, courseRepository);
+        order.verify(userRepository).findByIdForUpdate(1L);
+        order.verify(courseRepository).countByUserId(1L);
+    }
+
+    @Test
+    void 회원이_없으면_코스를_만들_수_없다() {
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.empty());
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                () -> service.create(1L, newCourse(TODAY, 1, null, null)));
+
+        assertEquals(HttpStatus.UNAUTHORIZED, e.getStatusCode());
     }
 }
