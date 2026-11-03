@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -41,9 +42,11 @@ public class CourseController {
         return courseService.create(CurrentUser.id(principal), request);
     }
 
+    /** 내 코스 목록. placeId를 주면 코스마다 그 장소가 이미 담겼는지(containsPlace)를 함께 준다(나만의 코스에 넣기). */
     @GetMapping
-    public List<CourseResponse> list(@AuthenticationPrincipal OAuth2User principal) {
-        return courseService.list(CurrentUser.id(principal));
+    public List<CourseResponse> list(@AuthenticationPrincipal OAuth2User principal,
+                                     @RequestParam(name = "placeId", required = false) Long placeId) {
+        return courseService.list(CurrentUser.id(principal), placeId);
     }
 
     @GetMapping("/{id}")

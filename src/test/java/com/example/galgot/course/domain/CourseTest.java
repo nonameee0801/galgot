@@ -10,6 +10,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.example.galgot.course.domain.Course;
 import com.example.galgot.course.domain.CoursePlace;
@@ -21,8 +23,20 @@ class CourseTest {
                 37.5, 127.0, null, null, null, null, "11", "110"));
     }
 
+    /** 같은 장소 확인은 장소 id로 하므로, 저장한 장소처럼 id를 넣은 장소. */
+    private static Place savedPlace(long id, String title) {
+        Place p = place(String.valueOf(id), title);
+        ReflectionTestUtils.setField(p, "id", id);
+        return p;
+    }
+
+    /** 일차를 여러 개 쓰는 테스트가 많아 기본은 2박3일(일정 3). */
     private static Course course() {
-        return Course.create(1L, "서울 하루 코스", "11", null, false);
+        return Course.create(1L, "서울 하루 코스", "11", null, 3, false);
+    }
+
+    private static Course course(int tripDays) {
+        return Course.create(1L, "서울 코스", "11", null, tripDays, false);
     }
 
     /** DB에 저장하지 않으면 id가 비어 있어, 빼기 테스트에서는 id를 직접 넣는다. */
@@ -120,7 +134,7 @@ class CourseTest {
     }
 
     @Test
-    void 목록_응답에는_장소_수와_일차_수가_들어간다() {
+    void 목록_응답에는_장소_수와_일차_수와_일정이_들어간다() {
         Course course = course();
         add(course, 10L, "경복궁", 1);
         add(course, 11L, "국립중앙박물관", 1);
@@ -130,12 +144,15 @@ class CourseTest {
 
         assertEquals(3, res.placeCount());
         assertEquals(2, res.dayCount());
+        assertEquals(3, res.tripDays());
+        assertEquals(2, res.lastDay());
+        assertNull(res.containsPlace());
         assertEquals(0, CourseResponse.from(course()).dayCount());
     }
 
     @Test
-    void 복사본은_장소와_일차_순서_메모를_그대로_옮기고_주인과_공유_코드는_새로_정한다() {
-        Course source = Course.create(1L, "가평군 1박2일 11/3", "41", java.time.LocalDate.of(2026, 11, 3), true);
+    void 복사본은_장소와_일차_순서_메모_일정을_그대로_옮기고_주인과_공유_코드는_새로_정한다() {
+        Course source = Course.create(1L, "가평군 1박2일 11/3", "41", java.time.LocalDate.of(2026, 11, 3), 2, true);
         add(source, 20L, "북한산", 2);
         add(source, 10L, "경복궁", 1);
         CoursePlace memo = source.addPlace(place("11", "국립중앙박물관"), 1, "오전에");
@@ -147,6 +164,7 @@ class CourseTest {
         assertEquals("가평군 1박2일 11/3", copy.getTitle());
         assertEquals("41", copy.getLdongRegnCd());
         assertEquals(source.getTravelDate(), copy.getTravelDate());
+        assertEquals(2, copy.getTripDays());
         assertFalse(copy.getShareCode().equals(source.getShareCode()));
         assertEquals(List.of("1:경복궁", "2:국립중앙박물관"), titlesOfDay(copy, 1));
         assertEquals(List.of("1:북한산"), titlesOfDay(copy, 2));
@@ -155,5 +173,86 @@ class CourseTest {
         // 복사본의 항목은 원래 코스의 항목과 다른 객체다(따로 움직인다)
         assertTrue(copy.getPlaces().stream().allMatch(cp -> cp.getCourse() == copy));
         assertEquals(3, source.getPlaces().size());
+    }
+
+    // ---- 나만의 코스에 넣기: 일정과 중복 (기획서 18장 D) ----
+
+    @Test
+    void 일정을_정하지_않고_만들면_당일치기다() {
+        assertEquals(1, Course.create(1L, "코스", "11", null, false).getTripDays());
+    }
+
+    @Test
+    void 일정은_1일부터_3일까지만_만들_수_있다() {
+        assertThrows(IllegalArgumentException.class, () -> course(0));
+        assertThrows(IllegalArgumentException.class, () -> course(4));
+        assertEquals(3, course(3).getTripDays());
+    }
+
+    @Test
+    void 같은_장소는_한_코스에_두_번_담을_수_없다() {
+        Course course = course();
+        course.addPlace(savedPlace(100L, "경복궁"), 1, null);
+
+        assertThrows(IllegalStateException.class, () -> course.addPlace(savedPlace(100L, "경복궁"), 2, null));
+        assertEquals(1, course.getPlaces().size());
+    }
+
+    @Test
+    void 이미_담긴_장소인지_알려_준다() {
+        Course course = course();
+        course.addPlace(savedPlace(100L, "경복궁"), 1, null);
+
+        assertTrue(course.containsPlace(100L));
+        assertFalse(course.containsPlace(200L));
+        assertFalse(course.containsPlace(null));
+        assertEquals(Boolean.TRUE, CourseResponse.from(course, 100L).containsPlace());
+        assertEquals(Boolean.FALSE, CourseResponse.from(course, 200L).containsPlace());
+    }
+
+    @Test
+    void 일정_밖의_일차에는_담을_수_없다() {
+        Course course = course(2);
+
+        assertThrows(IllegalArgumentException.class, () -> course.addPlace(place("1", "경복궁"), 3, null));
+        assertThrows(IllegalArgumentException.class, () -> course.addPlace(place("1", "경복궁"), 0, null));
+        assertTrue(course.getPlaces().isEmpty());
+    }
+
+    @Test
+    void 앞_일차가_비어_있어도_뒤_일차에_담을_수_있다() {
+        Course course = course(3);
+
+        CoursePlace cp = course.addPlace(place("1", "북한산"), 3, null);
+
+        assertEquals(3, cp.getDayNo());
+        assertEquals(1, cp.getVisitOrder());
+        assertEquals(3, course.lastUsedDay());
+    }
+
+    @Test
+    void 일정은_늘릴_수_있고_장소가_든_일차보다_짧게는_줄일_수_없다() {
+        Course course = course(2);
+        course.addPlace(place("1", "북한산"), 2, null);
+
+        course.changeTripDays(3);
+        assertEquals(3, course.getTripDays());
+
+        course.changeTripDays(2);
+        assertEquals(2, course.getTripDays());
+
+        assertThrows(IllegalArgumentException.class, () -> course.changeTripDays(1));
+        assertThrows(IllegalArgumentException.class, () -> course.changeTripDays(4));
+        assertEquals(2, course.getTripDays());
+    }
+
+    @Test
+    void 장소가_없으면_어떤_일정으로든_바꿀_수_있다() {
+        Course course = course(3);
+
+        course.changeTripDays(1);
+
+        assertEquals(1, course.getTripDays());
+        assertEquals(0, course.lastUsedDay());
     }
 }

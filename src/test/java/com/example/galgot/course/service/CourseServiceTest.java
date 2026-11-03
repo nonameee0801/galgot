@@ -1,8 +1,15 @@
 package com.example.galgot.course.service;
 
 import com.example.galgot.course.domain.Course;
+import com.example.galgot.course.domain.CoursePlace;
+import com.example.galgot.course.dto.AddPlaceRequest;
 import com.example.galgot.course.dto.CourseDetailResponse;
+import com.example.galgot.course.dto.CourseRequest;
+import com.example.galgot.course.dto.CourseResponse;
+import com.example.galgot.course.dto.ReorderRequest;
 import com.example.galgot.course.repository.CourseRepository;
+import com.example.galgot.infra.tourapi.TourPlaceItem;
+import com.example.galgot.place.domain.Place;
 import com.example.galgot.place.repository.PlaceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,8 +18,14 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,9 +36,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** 공유 링크 보기와 공유받은 코스를 내 코스로 저장하기(기획서 18장 E). */
+/** 공유 링크 보기, 공유받은 코스를 내 코스로 저장하기(기획서 18장 E)와 나만의 코스에 넣기(18장 D). */
 @ExtendWith(MockitoExtension.class)
 class CourseServiceTest {
+
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+    /** 오늘은 2026-11-03(한국 시간)으로 고정 */
+    private static final LocalDate TODAY = LocalDate.of(2026, 11, 3);
 
     @Mock
     CourseRepository courseRepository;
@@ -36,8 +53,30 @@ class CourseServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new CourseService(courseRepository, placeRepository);
+        Clock clock = Clock.fixed(ZonedDateTime.of(2026, 11, 3, 9, 0, 0, 0, SEOUL).toInstant(), SEOUL);
+        service = new CourseService(courseRepository, placeRepository, clock);
     }
+
+    private static Place savedPlace(long id, String title) {
+        Place p = Place.from(new TourPlaceItem(String.valueOf(id), 12, null, null, null, title, "서울",
+                37.5, 127.0, null, null, null, null, "11", "110"));
+        ReflectionTestUtils.setField(p, "id", id);
+        return p;
+    }
+
+    private static CourseRequest newCourse(LocalDate date, Integer tripDays, Long placeId, Integer dayNo) {
+        return new CourseRequest("나만의 코스 11/3", "41", date, null, tripDays, placeId, dayNo);
+    }
+
+    /** 회원 1의 코스(id 10). */
+    private Course ownedCourse(int tripDays) {
+        Course course = Course.create(1L, "내 코스", "11", TODAY, tripDays, false);
+        ReflectionTestUtils.setField(course, "id", 10L);
+        when(courseRepository.findById(10L)).thenReturn(Optional.of(course));
+        return course;
+    }
+
+    // ---- 공유 링크 (18장 E) ----
 
     @Test
     void 비공개로_만든_코스도_공유_링크로_볼_수_있다() {
@@ -80,5 +119,138 @@ class CourseServiceTest {
 
         assertEquals(HttpStatus.NOT_FOUND, e.getStatusCode());
         verify(courseRepository, never()).saveAndFlush(any());
+    }
+
+    // ---- 나만의 코스에 넣기 (18장 D) ----
+
+    @Test
+    void 첫_장소와_함께_코스를_만들면_한_번에_저장되고_시도는_장소의_시도다() {
+        when(placeRepository.findById(5L)).thenReturn(Optional.of(savedPlace(5L, "경복궁")));
+
+        CourseDetailResponse res = service.create(1L, newCourse(TODAY, 2, 5L, 2));
+
+        verify(courseRepository).saveAndFlush(any(Course.class));
+        assertEquals(2, res.tripDays());
+        assertEquals("11", res.ldongRegnCd()); // 요청의 41이 아니라 장소의 시도
+        assertEquals(1, res.places().size());
+        assertEquals(2, res.places().get(0).dayNo());
+        assertEquals(1, res.places().get(0).visitOrder());
+    }
+
+    @Test
+    void 일정을_보내지_않으면_당일치기로_만든다() {
+        CourseDetailResponse res = service.create(1L, newCourse(TODAY.plusDays(10), null, null, null));
+
+        assertEquals(1, res.tripDays());
+        assertEquals("41", res.ldongRegnCd());
+    }
+
+    @Test
+    void 출발일이_없거나_지난_날짜면_400이고_저장하지_않는다() {
+        ResponseStatusException none = assertThrows(ResponseStatusException.class,
+                () -> service.create(1L, newCourse(null, 1, null, null)));
+        ResponseStatusException past = assertThrows(ResponseStatusException.class,
+                () -> service.create(1L, newCourse(TODAY.minusDays(1), 1, null, null)));
+
+        assertEquals(HttpStatus.BAD_REQUEST, none.getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, past.getStatusCode());
+        verify(courseRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void 첫_장소의_일차가_일정_밖이면_400이고_저장하지_않는다() {
+        when(placeRepository.findById(5L)).thenReturn(Optional.of(savedPlace(5L, "경복궁")));
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                () -> service.create(1L, newCourse(TODAY, 1, 5L, 2)));
+
+        assertEquals(HttpStatus.BAD_REQUEST, e.getStatusCode());
+        verify(courseRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void 없는_장소로_코스를_만들면_404() {
+        when(placeRepository.findById(99L)).thenReturn(Optional.empty());
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                () -> service.create(1L, newCourse(TODAY, 1, 99L, 1)));
+
+        assertEquals(HttpStatus.NOT_FOUND, e.getStatusCode());
+    }
+
+    @Test
+    void 같은_장소를_또_담으면_409이고_저장하지_않는다() {
+        Course course = ownedCourse(2);
+        Place place = savedPlace(5L, "경복궁");
+        course.addPlace(place, 1, null);
+        when(placeRepository.findById(5L)).thenReturn(Optional.of(place));
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                () -> service.addPlace(1L, 10L, new AddPlaceRequest(5L, 2, null)));
+
+        assertEquals(HttpStatus.CONFLICT, e.getStatusCode());
+        verify(courseRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void 일정_밖_일차에_담으면_400() {
+        ownedCourse(1);
+        when(placeRepository.findById(5L)).thenReturn(Optional.of(savedPlace(5L, "경복궁")));
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                () -> service.addPlace(1L, 10L, new AddPlaceRequest(5L, 2, null)));
+
+        assertEquals(HttpStatus.BAD_REQUEST, e.getStatusCode());
+    }
+
+    @Test
+    void 목록을_장소와_함께_부르면_코스마다_이미_담겼는지_알려_준다() {
+        Course has = Course.create(1L, "담긴 코스", "11", TODAY, 1, false);
+        has.addPlace(savedPlace(5L, "경복궁"), 1, null);
+        Course empty = Course.create(1L, "빈 코스", "11", TODAY, 1, false);
+        when(courseRepository.findAllByUserIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(has, empty));
+
+        List<CourseResponse> withPlace = service.list(1L, 5L);
+        List<CourseResponse> plain = service.list(1L, null);
+
+        assertEquals(Boolean.TRUE, withPlace.get(0).containsPlace());
+        assertEquals(Boolean.FALSE, withPlace.get(1).containsPlace());
+        assertEquals(null, plain.get(0).containsPlace());
+    }
+
+    @Test
+    void 장소가_든_일차보다_일정을_줄이면_400() {
+        Course course = ownedCourse(2);
+        course.addPlace(savedPlace(5L, "경복궁"), 2, null);
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                () -> service.update(1L, 10L, new CourseRequest("내 코스", "11", TODAY, null, 1, null, null)));
+
+        assertEquals(HttpStatus.BAD_REQUEST, e.getStatusCode());
+        assertEquals(2, course.getTripDays());
+    }
+
+    @Test
+    void 일정을_보내지_않고_수정하면_일정은_그대로다() {
+        Course course = ownedCourse(3);
+
+        CourseDetailResponse res = service.update(1L, 10L,
+                new CourseRequest("새 이름", "11", TODAY.minusDays(5), null, null, null, null));
+
+        assertEquals(3, res.tripDays());
+        assertEquals("새 이름", course.getTitle());
+    }
+
+    @Test
+    void 순서_바꾸기로_일정_밖_일차에_옮기면_400() {
+        Course course = ownedCourse(2);
+        CoursePlace cp = course.addPlace(savedPlace(5L, "경복궁"), 1, null);
+        ReflectionTestUtils.setField(cp, "id", 50L);
+
+        ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                () -> service.reorder(1L, 10L, new ReorderRequest(List.of(new ReorderRequest.Item(50L, 3, 1)))));
+
+        assertEquals(HttpStatus.BAD_REQUEST, e.getStatusCode());
+        assertEquals(1, cp.getDayNo());
     }
 }

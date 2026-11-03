@@ -22,6 +22,9 @@ import java.util.UUID;
 @Table(name = "courses")
 public class Course {
 
+    /** 코스 일정의 최대 일수(2박3일). 날씨기반 추천과 같다(기획서 18장 D). */
+    public static final int MAX_TRIP_DAYS = 3;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -60,13 +63,21 @@ public class Course {
     protected Course() {
     }
 
+    /** 일정 없이 만들면 당일치기(1)다. */
     public static Course create(Long userId, String title, String ldongRegnCd,
                                 LocalDate travelDate, boolean publicCourse) {
+        return create(userId, title, ldongRegnCd, travelDate, 1, publicCourse);
+    }
+
+    public static Course create(Long userId, String title, String ldongRegnCd,
+                                LocalDate travelDate, int tripDays, boolean publicCourse) {
+        checkTripDaysRange(tripDays);
         Course course = new Course();
         course.userId = userId;
         course.title = title;
         course.ldongRegnCd = ldongRegnCd;
         course.travelDate = travelDate;
+        course.tripDays = tripDays;
         course.publicCourse = publicCourse;
         course.shareCode = UUID.randomUUID().toString();
         course.createdAt = LocalDateTime.now();
@@ -81,11 +92,25 @@ public class Course {
     }
 
     /**
-     * 공유받은 코스를 내 코스로 저장할 때의 복사본. 이름, 시도, 여행 날짜와 장소(일차, 방문 순서, 메모)를 그대로 옮기고
+     * 일정을 바꾼다. 1~3만 받고, 장소가 들어 있는 일차보다 짧게는 줄일 수 없다
+     * (예: 2일차에 장소가 있으면 당일치기로 못 바꾼다).
+     */
+    public void changeTripDays(int tripDays) {
+        checkTripDaysRange(tripDays);
+        int lastUsed = lastUsedDay();
+        if (tripDays < lastUsed) {
+            throw new IllegalArgumentException(
+                    lastUsed + "일차에 장소가 있어 일정을 " + tripDays + "일로 줄일 수 없습니다.");
+        }
+        this.tripDays = tripDays;
+    }
+
+    /**
+     * 공유받은 코스를 내 코스로 저장할 때의 복사본. 이름, 시도, 여행 날짜, 일정과 장소(일차, 방문 순서, 메모)를 그대로 옮기고
      * 주인과 공유 코드는 새로 정한다. 복사한 뒤에는 원래 코스와 따로 움직인다.
      */
     public static Course copyOf(Course source, Long userId) {
-        Course copy = create(userId, source.title, source.ldongRegnCd, source.travelDate, false);
+        Course copy = create(userId, source.title, source.ldongRegnCd, source.travelDate, source.tripDays, false);
         source.places.stream()
                 .sorted(Comparator.comparingInt(CoursePlace::getDayNo)
                         .thenComparingInt(CoursePlace::getVisitOrder)
@@ -95,8 +120,15 @@ public class Course {
         return copy;
     }
 
-    /** 해당 일차의 맨 뒤에 장소를 추가한다. 방문 순서는 그 일차의 최댓값 + 1. */
+    /**
+     * 해당 일차의 맨 뒤에 장소를 추가한다. 방문 순서는 그 일차의 최댓값 + 1.
+     * 같은 장소는 한 코스에 두 번 담을 수 없고, 일차는 일정(1 ~ tripDays) 안이어야 한다. 앞 일차가 비어 있어도 된다.
+     */
     public CoursePlace addPlace(Place place, int dayNo, String memo) {
+        checkDayInTrip(dayNo);
+        if (containsPlace(place.getId())) {
+            throw new IllegalStateException("이미 이 코스에 담긴 장소예요.");
+        }
         int nextOrder = places.stream()
                 .filter(cp -> cp.getDayNo() == dayNo)
                 .mapToInt(CoursePlace::getVisitOrder)
@@ -105,6 +137,19 @@ public class Course {
         CoursePlace coursePlace = new CoursePlace(this, place, dayNo, nextOrder, memo);
         places.add(coursePlace);
         return coursePlace;
+    }
+
+    /** 이 코스에 그 장소가 이미 있는지. 저장 전 장소처럼 id가 없으면 false. */
+    public boolean containsPlace(Long placeId) {
+        return placeId != null && places.stream().anyMatch(cp -> placeId.equals(cp.getPlace().getId()));
+    }
+
+    /** 일차가 일정 안(1 ~ tripDays)인지 확인한다. 순서 바꾸기에서도 쓴다. */
+    public void checkDayInTrip(int dayNo) {
+        if (dayNo < 1 || dayNo > tripDays) {
+            throw new IllegalArgumentException(
+                    "이 코스의 일정은 " + tripDays + "일이라 " + dayNo + "일차에는 담을 수 없습니다.");
+        }
     }
 
     /**
@@ -142,6 +187,18 @@ public class Course {
     /** 장소가 담긴 일차 수(서로 다른 일차의 개수). 비어 있으면 0. */
     public int dayCount() {
         return (int) places.stream().mapToInt(CoursePlace::getDayNo).distinct().count();
+    }
+
+    /** 장소가 들어 있는 가장 뒤 일차. 비어 있으면 0. */
+    public int lastUsedDay() {
+        return places.stream().mapToInt(CoursePlace::getDayNo).max().orElse(0);
+    }
+
+    private static void checkTripDaysRange(int tripDays) {
+        if (tripDays < 1 || tripDays > MAX_TRIP_DAYS) {
+            throw new IllegalArgumentException(
+                    "일정은 1일부터 " + MAX_TRIP_DAYS + "일까지 고를 수 있습니다.");
+        }
     }
 
     public Long getId() { return id; }
