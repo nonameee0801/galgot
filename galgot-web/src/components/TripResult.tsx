@@ -4,6 +4,7 @@ import { Sun, Umbrella } from 'lucide-react'
 import { ApiError, addCoursePlace, createCourse, deleteCourse } from '../api'
 import type { Me, Trip } from '../api'
 import { DAY_STYLES, ENV_LABEL, REGIONS, shortAddr, tripLengthName, typeName } from '../labels'
+import SavedModal from './SavedModal'
 import StopPhoto from './StopPhoto'
 
 interface Props {
@@ -17,6 +18,8 @@ interface Props {
   rerolling: boolean
   /** 조건 입력으로 돌아간다 */
   onEdit: () => void
+  /** 저장 팝업의 [괜찮아요]: 날씨기반 추천 탭을 처음 상태(초기값 입력 화면)로 연다 */
+  onReset: () => void
 }
 
 type SaveState =
@@ -42,7 +45,7 @@ function courseTitle(trip: Trip): string {
  * 지도에는 일차별 번호 마커와 선이 함께 그려진다(KakaoMap의 route).
  * 일차별 날씨와 판정 안내는 옆 날씨 패널(TripWeatherPanel)이 보여 준다.
  */
-export default function TripResult({ trip, me, onLogin, selectedId, onSelect, onReroll, rerolling, onEdit }: Props) {
+export default function TripResult({ trip, me, onLogin, selectedId, onSelect, onReroll, rerolling, onEdit, onReset }: Props) {
   const [active, setActive] = useState(0)
   const [save, setSave] = useState<SaveState>({ kind: 'idle' })
   const day = trip.days[Math.min(active, trip.days.length - 1)]
@@ -176,14 +179,6 @@ export default function TripResult({ trip, me, onLogin, selectedId, onSelect, on
         </button>
       </div>
       <p className="trip-foot" aria-live="polite">
-        {save.kind === 'saved' && (
-          <>
-            "{save.title}" 코스를 내 코스에 저장했어요(비공개).{' '}
-            <Link className="link-btn" to={`/my/courses/${save.courseId}`}>
-              내 코스에서 보기
-            </Link>
-          </>
-        )}
         {save.kind === 'error' && save.message}
         {save.kind === 'limit' && (
           <>
@@ -195,6 +190,8 @@ export default function TripResult({ trip, me, onLogin, selectedId, onSelect, on
         )}
         {save.kind === 'idle' && !me && '저장하려면 로그인이 필요해요.'}
       </p>
+      {/* 저장하면 팝업으로 알리고 바로 내 코스로 갈 수 있게 한다(2026-11-04 사용자 결정) */}
+      {save.kind === 'saved' && <SavedModal title={save.title} courseId={save.courseId} onLater={onReset} />}
     </section>
   )
 }

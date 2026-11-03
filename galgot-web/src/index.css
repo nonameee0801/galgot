@@ -1684,6 +1684,12 @@ button {
   font-size: 0.9375rem;
 }
 
+.saved-text {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
 .switch {
   margin: 16px 0 0;
   font-size: 0.9375rem;

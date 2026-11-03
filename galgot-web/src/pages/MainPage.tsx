@@ -443,6 +443,7 @@ export default function MainPage({ me, onLogin }: Props) {
               onSelect={openPlace}
               onRoute={setRoute}
               onWeather={setTripWeather}
+              onReset={() => openTab('trip')}
             />
           </div>
         ) : (
