@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import { Link } from 'react-router'
 import { ArrowLeft, Map as MapIcon } from 'lucide-react'
-import { ApiError, fetchCourse, fetchCourses } from '../api'
+import { ApiError, NICKNAME_MAX, fetchCourse, fetchCourses, updateNickname } from '../api'
 import type { CourseDetail, CourseSummary, Me } from '../api'
 import CourseMapModal from '../components/CourseMapModal'
 import { REGIONS, tripLengthName } from '../labels'
@@ -12,6 +13,8 @@ interface Props {
   meLoaded: boolean
   onLogin: () => void
   onWithdraw: () => void
+  /** 닉네임을 바꾸면 헤더의 닉네임도 함께 바뀌게 앱의 내 정보를 바꾼다 */
+  onMeChange: (me: Me) => void
 }
 
 type Courses = { kind: 'loading' } | { kind: 'ready'; list: CourseSummary[] } | { kind: 'error'; message: string }
@@ -35,11 +38,95 @@ export function LoginNeeded({ onLogin }: { onLogin: () => void }) {
   )
 }
 
+/** 내 정보의 닉네임. [바꾸기]를 누르면 그 자리가 입력칸과 [저장] [취소]로 바뀐다(기획서 18장 F). */
+function NicknameRow({ me, onMeChange }: { me: Me; onMeChange: (me: Me) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(me.nickname)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  function start() {
+    setDraft(me.nickname)
+    setError(null)
+    setEditing(true)
+  }
+
+  function cancel() {
+    setEditing(false)
+    setError(null)
+  }
+
+  async function save(e: FormEvent) {
+    e.preventDefault()
+    const next = draft.trim()
+    if (next === '') {
+      setError('닉네임을 입력해 주세요.')
+      return
+    }
+    if (next === me.nickname) {
+      setEditing(false)
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      onMeChange(await updateNickname(next))
+      setEditing(false)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : '닉네임을 바꾸지 못했어요.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (!editing) {
+    return (
+      <p className="nickname-row">
+        닉네임 <strong>{me.nickname}</strong>
+        <button type="button" className="link-btn" onClick={start}>
+          바꾸기
+        </button>
+      </p>
+    )
+  }
+
+  return (
+    <form className="nickname-form" onSubmit={save}>
+      <label htmlFor="nickname-input">닉네임</label>
+      <input
+        id="nickname-input"
+        value={draft}
+        maxLength={NICKNAME_MAX}
+        autoFocus
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') cancel()
+        }}
+        aria-describedby={error ? 'nickname-error' : undefined}
+      />
+      <span className="muted nickname-count">
+        {draft.trim().length}/{NICKNAME_MAX}
+      </span>
+      <button type="submit" className="btn-more" disabled={saving}>
+        {saving ? '저장 중' : '저장'}
+      </button>
+      <button type="button" className="btn-line" onClick={cancel} disabled={saving}>
+        취소
+      </button>
+      {error && (
+        <p id="nickname-error" className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+    </form>
+  )
+}
+
 /**
- * 마이페이지(/my, 기획서 18장 E): 내 정보, 내 코스 목록, 회원 탈퇴.
+ * 마이페이지(/my, 기획서 18장 E·F): 내 정보(닉네임 바꾸기), 내 코스 목록, 회원 탈퇴.
  * 코스 카드를 누르면 내 코스 상세(/my/courses/:id)로 가고, [지도로 보기]는 그 코스를 지도 팝업으로 연다.
  */
-export default function MyPage({ me, meLoaded, onLogin, onWithdraw }: Props) {
+export default function MyPage({ me, meLoaded, onLogin, onWithdraw, onMeChange }: Props) {
   const [courses, setCourses] = useState<Courses>({ kind: 'loading' })
   const [mapCourse, setMapCourse] = useState<CourseDetail | null>(null)
   const [opening, setOpening] = useState<number | null>(null)
@@ -93,9 +180,7 @@ export default function MyPage({ me, meLoaded, onLogin, onWithdraw }: Props) {
           <>
             <section className="page-section" aria-labelledby="my-info">
               <h2 id="my-info">내 정보</h2>
-              <p>
-                닉네임 <strong>{me.nickname}</strong>
-              </p>
+              <NicknameRow me={me} onMeChange={onMeChange} />
             </section>
 
             <section className="page-section" aria-labelledby="my-courses">

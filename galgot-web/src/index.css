@@ -1910,3 +1910,38 @@ button {
   margin: 0 0 8px;
   padding-left: 14px;
 }
+
+/* 마이페이지 관리(기획서 18장 F): 닉네임 바꾸기, 코스 선택 모드 */
+.nickname-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.nickname-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 1em;
+}
+
+.nickname-form input {
+  flex: 1 1 200px;
+  min-width: 0;
+  max-width: 320px;
+  padding: 8px 10px;
+  border: 1.5px solid #9aa5b1;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.nickname-count {
+  font-size: 0.8125rem;
+}
+
+.nickname-form .form-error {
+  flex-basis: 100%;
+  margin: 0;
+}

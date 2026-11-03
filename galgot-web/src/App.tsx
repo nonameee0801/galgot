@@ -99,7 +99,13 @@ export default function App() {
         <Route
           path="/my"
           element={
-            <MyPage me={me} meLoaded={meLoaded} onLogin={() => setModal('auth')} onWithdraw={() => setModal('withdraw')} />
+            <MyPage
+              me={me}
+              meLoaded={meLoaded}
+              onLogin={() => setModal('auth')}
+              onWithdraw={() => setModal('withdraw')}
+              onMeChange={setMe}
+            />
           }
         />
         <Route

@@ -463,6 +463,18 @@ export function withdraw(): Promise<void> {
   return request<void>('/api/users/me', { method: 'DELETE' })
 }
 
+/** 닉네임 바꾸기. 앞뒤 공백을 지우고 1~50자(기획서 18장 F). */
+export function updateNickname(nickname: string): Promise<Me> {
+  return request<Me>(
+    '/api/users/me',
+    { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nickname }) },
+    { 400: '닉네임은 1~50자로 입력해 주세요.' },
+  )
+}
+
+/** 닉네임 최대 길이(서버 User.NICKNAME_MAX와 같다). */
+export const NICKNAME_MAX = 50
+
 /** 화면에서 미리 확인하는 비밀번호 규칙(서버 CredentialPolicy와 같다). */
 export function isValidPassword(pw: string): boolean {
   return /^[\x21-\x7E]{8,64}$/.test(pw) && /[A-Za-z]/.test(pw) && /[0-9]/.test(pw)
