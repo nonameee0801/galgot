@@ -57,7 +57,12 @@ export default function TripResult({ trip, me, onLogin, selectedId, onSelect, on
     const title = courseTitle(trip)
     let courseId: number | null = null
     try {
-      const course = await createCourse(title, trip.region, trip.start)
+      const course = await createCourse({
+        title,
+        ldongRegnCd: trip.region,
+        travelDate: trip.start,
+        tripDays: trip.dayCount,
+      })
       courseId = course.id
       for (const d of trip.days) {
         for (const stop of d.places) {

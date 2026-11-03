@@ -50,7 +50,7 @@ export default function CourseMapModal({ course, initialPlaceId = null, onClose 
       <div className="course-map">
         <div className="course-map-side">
           {selectedId !== null ? (
-            <PlaceDetail id={selectedId} onBack={() => setSelectedId(null)} />
+            <PlaceDetail id={selectedId} onBack={() => setSelectedId(null)} hideAddToCourse />
           ) : (
             <>
               {hidden > 0 && (

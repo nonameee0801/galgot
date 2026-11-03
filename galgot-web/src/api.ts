@@ -276,13 +276,33 @@ export interface CourseCreated {
 }
 
 /** 내 코스 만들기. 처음에는 비공개로 만든다. */
-export function createCourse(title: string, ldongRegnCd: string, travelDate: string): Promise<CourseCreated> {
-  return postJson<CourseCreated>('/api/courses', { title, ldongRegnCd, travelDate, publicCourse: false })
+export interface NewCourse {
+  title: string
+  /** 시도 코드. placeId를 주면 서버가 그 장소의 시도로 정한다 */
+  ldongRegnCd?: string | null
+  /** 출발일(필수, 오늘 이후) */
+  travelDate: string
+  /** 일정: 당일치기 1, 1박2일 2, 2박3일 3 */
+  tripDays: number
+  /** 첫 장소를 함께 넣을 때(나만의 코스에 넣기). 새 코스와 장소를 한 번에 저장한다 */
+  placeId?: number
+  dayNo?: number
+}
+
+export function createCourse(input: NewCourse): Promise<CourseCreated> {
+  return postJson<CourseCreated>('/api/courses', { ...input, publicCourse: false }, {
+    400: '코스를 만들 수 없어요. 출발일(오늘 이후)과 일정을 확인해 주세요.',
+    404: '장소를 찾을 수 없어요.',
+  })
 }
 
 /** 코스에 장소 담기(담는 순서가 그날 방문 순서가 된다). */
 export function addCoursePlace(courseId: number, placeId: number, dayNo: number): Promise<void> {
-  return postJson<void>(`/api/courses/${courseId}/places`, { placeId, dayNo })
+  return postJson<void>(`/api/courses/${courseId}/places`, { placeId, dayNo }, {
+    400: '이 코스에는 더 담을 수 없어요. 일정 안의 일차인지, 50곳이 넘지 않았는지 확인해 주세요.',
+    404: '코스나 장소를 찾을 수 없어요.',
+    409: '이미 이 코스에 담긴 장소예요.',
+  })
 }
 
 export function deleteCourse(courseId: number): Promise<void> {
@@ -301,6 +321,12 @@ export interface CourseSummary {
   createdAt: string
   placeCount: number
   dayCount: number
+  /** 일정: 당일치기 1, 1박2일 2, 2박3일 3 */
+  tripDays: number
+  /** 장소가 든 가장 뒤 일차(없으면 0) */
+  lastDay: number
+  /** 목록을 placeId와 함께 불렀을 때만: 그 장소가 이미 담겼는지 */
+  containsPlace: boolean | null
 }
 
 /** 코스에 담긴 장소 한 건 */
@@ -319,6 +345,8 @@ export interface CourseDetail {
   title: string
   ldongRegnCd: string | null
   travelDate: string | null
+  /** 일정(1~3). 장소가 없는 일차도 있을 수 있다 */
+  tripDays: number
   publicCourse: boolean
   shareCode: string
   createdAt: string
@@ -331,8 +359,8 @@ const COURSE_MESSAGES: Messages = {
 }
 
 /** 내 코스 목록(최근에 만든 순). 로그인하지 않았으면 401 */
-export function fetchCourses(): Promise<CourseSummary[]> {
-  return request<CourseSummary[]>('/api/courses')
+export function fetchCourses(placeId?: number): Promise<CourseSummary[]> {
+  return request<CourseSummary[]>(placeId === undefined ? '/api/courses' : `/api/courses?placeId=${placeId}`)
 }
 
 export function fetchCourse(courseId: number): Promise<CourseDetail> {
@@ -341,7 +369,7 @@ export function fetchCourse(courseId: number): Promise<CourseDetail> {
 
 /** 이름, 여행 날짜, 공개 여부를 한 번에 바꾼다(서버는 셋을 모두 받는다) */
 export function updateCourse(
-  course: Pick<CourseDetail, 'id' | 'title' | 'ldongRegnCd' | 'travelDate' | 'publicCourse'>,
+  course: Pick<CourseDetail, 'id' | 'title' | 'ldongRegnCd' | 'travelDate' | 'publicCourse' | 'tripDays'>,
 ): Promise<CourseDetail> {
   return request<CourseDetail>(
     `/api/courses/${course.id}`,
@@ -353,6 +381,7 @@ export function updateCourse(
         ldongRegnCd: course.ldongRegnCd,
         travelDate: course.travelDate,
         publicCourse: course.publicCourse,
+        tripDays: course.tripDays,
       }),
     },
     { ...COURSE_MESSAGES, 400: '코스 이름을 1~100자로 적어 주세요.' },

@@ -6,13 +6,15 @@ interface Props {
   children: ReactNode
   /** 화면을 크게 쓰는 팝업(코스 지도 팝업) */
   wide?: boolean
+  /** 기본보다 넓고 화면 높이 안에 들어오는 팝업. 아래쪽 버튼을 고정하고 내용만 스크롤한다(나만의 코스에 넣기) */
+  medium?: boolean
 }
 
 /**
  * 공통 팝업 창. 브라우저 기본 <dialog>를 써서 Esc로 닫기, 바깥 클릭 막기(포커스 가두기)를 그대로 얻는다.
  * 바깥 어두운 부분을 누르면 닫힌다.
  */
-export default function Modal({ title, onClose, children, wide = false }: Props) {
+export default function Modal({ title, onClose, children, wide = false, medium = false }: Props) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
 
@@ -24,7 +26,7 @@ export default function Modal({ title, onClose, children, wide = false }: Props)
   return (
     <dialog
       ref={ref}
-      className={wide ? 'modal modal-wide' : 'modal'}
+      className={wide ? 'modal modal-wide' : medium ? 'modal modal-medium' : 'modal'}
       aria-labelledby={titleId}
       onClose={onClose}
       onClick={(e) => {
