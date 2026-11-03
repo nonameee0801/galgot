@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router'
-import { ArrowLeft, Map as MapIcon } from 'lucide-react'
+import { ArrowLeft, Map as MapIcon, Route } from 'lucide-react'
 import {
   ApiError,
   MAX_BULK_DELETE,
@@ -327,16 +327,22 @@ export default function MyPage({ me, meLoaded, onLogin, onWithdraw, onMeChange }
                   {shown.map((c) => {
                     const region = REGIONS.find((r) => r.code === c.ldongRegnCd)?.name
                     const travel = shortDate(c.travelDate)
+                    // 앞에 코스 아이콘(기획서 19장). 목록 API에 사진이 없어 장소 사진 대신 아이콘을 둔다
                     const body = (
                       <>
-                        <strong className="course-card-title">{c.title}</strong>
-                        <span className="meta">
-                          {region && <span>{region}</span>}
-                          {travel && <span>{travel} 출발</span>}
-                          <span>
-                            장소 {c.placeCount}곳 · {tripLengthName(c.tripDays)}
+                        <span className="course-card-icon" aria-hidden="true">
+                          <Route size={20} />
+                        </span>
+                        <span className="course-card-text">
+                          <strong className="course-card-title">{c.title}</strong>
+                          <span className="meta">
+                            {region && <span>{region}</span>}
+                            {travel && <span>{travel} 출발</span>}
+                            <span>
+                              장소 {c.placeCount}곳 · {tripLengthName(c.tripDays)}
+                            </span>
+                            <span>{shortDate(c.createdAt)} 만듦</span>
                           </span>
-                          <span>{shortDate(c.createdAt)} 만듦</span>
                         </span>
                       </>
                     )

@@ -50,14 +50,47 @@ export function weatherText(w: Weather): string {
   return parts.length > 0 ? parts.join(', ') : '정보 없음'
 }
 
-export type Mood = 'clear' | 'cloud' | 'wet' | 'snow'
+export type WeatherKind = 'clear' | 'cloud' | 'rain' | 'snow'
 
-/** 페이지 배경 분위기를 정하는 값. 강수가 있으면 하늘 상태보다 우선한다. */
-export function moodOf(w: Weather): Mood {
+/** "서울 전체", "경기 · 가평군"처럼 날씨를 받은 지역을 한 줄로. */
+export function areaLabel(w: Weather): string {
+  if (w.area === w.region) return w.areaName
+  const regionName = REGIONS.find((r) => r.code === w.region)?.name ?? ''
+  return regionName ? `${regionName} · ${w.areaName}` : w.areaName
+}
+
+/** 표지의 날씨 효과와 날씨 아이콘을 정하는 값. 강수가 있으면 하늘 상태보다 우선한다. */
+export function weatherKind(w: Weather): WeatherKind {
   if (w.precipType === 'SNOW' || w.precipType === 'RAIN_SNOW') return 'snow'
-  if (w.precipType && w.precipType !== 'NONE') return 'wet'
+  if (w.precipType && w.precipType !== 'NONE') return 'rain'
   if (w.sky === 'CLEAR') return 'clear'
   return 'cloud'
+}
+
+/**
+ * 판정 문장에 넣는 짧은 지역 이름: "서울 전체" → "서울", "종로구" → "종로", "가평군" → "가평".
+ * "중구"처럼 끝 글자를 떼면 한 글자만 남는 이름은 그대로 둔다.
+ */
+export function shortAreaName(name: string): string {
+  const n = name.replace(/\s*전체$/, '').trim()
+  return n.length > 2 && /[구시군]$/.test(n) ? n.slice(0, -1) : n
+}
+
+/**
+ * 표지의 판정 문장(여행 말투, 기획서 19장). 야외 적합 여부는 서버 판정(outdoorSuitable)을 그대로 따르고,
+ * 날씨 종류와 기온으로 문장만 고른다. 기온 기준(33도, 영하 10도)은 서버 기본값과 같지만 문장을 고를 때만 쓴다.
+ */
+export function travelHeadline(w: Weather, outdoorSuitable: boolean, place: string): string {
+  const kind = weatherKind(w)
+  if (kind === 'snow') return `눈 오는 ${place}, 따뜻한 실내로 가요`
+  if (kind === 'rain') return `비 오는 ${place}, 실내 여행 어때요?`
+  if (!outdoorSuitable) {
+    if (w.tempMax !== null && w.tempMax >= 33) return `무더운 ${place}, 시원한 실내로 피해요`
+    if (w.tempMin !== null && w.tempMin <= -10) return `꽁꽁 언 ${place}, 따뜻한 실내로 가요`
+    return `비 소식 있는 ${place}, 실내 여행 어때요?`
+  }
+  if (kind === 'clear') return `맑은 ${place}, 걷기 좋은 날이에요`
+  return `구름 낀 ${place}, 산책하기 괜찮아요`
 }
 
 export interface DayOption {
@@ -95,6 +128,11 @@ export function shortAddr(addr: string | null): string {
   return addr.replace(/^(서울특별시|경기도)\s*/, '')
 }
 
+/** "서울특별시 종로구 효자로 12" → "종로구"처럼 주소에서 구·시군만. 없으면 빈 글자 */
+export function districtOf(addr: string | null): string {
+  return shortAddr(addr).split(' ')[0] ?? ''
+}
+
 /** 날씨기반 추천의 일정 길이. 날씨 예보가 3일 뒤까지라 2박3일까지만 둔다. */
 export const TRIP_LENGTHS: { days: number; name: string }[] = [
   { days: 1, name: '당일치기' },
@@ -113,7 +151,7 @@ export function startOptions(all: DayOption[], days: number): DayOption[] {
 
 /** 일차별 지도 색. 색만으로 나누지 않도록 선 모양(실선, 긴 점선, 점선)도 함께 바꾼다. */
 export const DAY_STYLES: { color: string; line: 'solid' | 'shortdash' | 'shortdot' }[] = [
-  { color: '#c2410c', line: 'solid' },
-  { color: '#1d4ed8', line: 'shortdash' },
-  { color: '#047857', line: 'shortdot' },
+  { color: '#0e6f73', line: 'solid' },
+  { color: '#c2611b', line: 'shortdash' },
+  { color: '#6a4fb3', line: 'shortdot' },
 ]

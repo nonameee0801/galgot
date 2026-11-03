@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Place } from '../api'
-import { ENV_LABEL, TYPES, shortAddr, typeName } from '../labels'
+import { ENV_LABEL, TYPES, districtOf, typeName } from '../labels'
+import PhotoFallback from './PhotoFallback'
 
 interface Props {
   places: Place[]
@@ -18,11 +19,15 @@ interface Props {
   keyword?: string | null
 }
 
-/** 패널 폭에 맞춘 한 줄 카드: 왼쪽 작은 사진, 오른쪽 이름과 주소. 누르면 지도에서 그 장소로 가고 상세가 열린다. */
+/**
+ * 사진 카드(기획서 19장): 위에 사진과 실내/실외 표시, 아래 이름(두 줄까지)과 테마 · 구·시군.
+ * 누르면 지도에서 그 장소로 가고 상세가 열린다. 사진이 없으면 실내/실외에 맞춘 그림으로 대신한다.
+ */
 function Tile({ place, selected, onSelect }: { place: Place; selected: boolean; onSelect: (id: number) => void }) {
   const [broken, setBroken] = useState(false)
   const src = place.thumbnailUrl ?? place.imageUrl
   const showImage = src !== null && !broken
+  const where = districtOf(place.addr)
 
   return (
     <li>
@@ -36,16 +41,14 @@ function Tile({ place, selected, onSelect }: { place: Place; selected: boolean; 
           {showImage ? (
             <img src={src} alt="" loading="lazy" onError={() => setBroken(true)} />
           ) : (
-            <span className="thumb-fallback">{typeName(place.contentTypeId)}</span>
+            <PhotoFallback env={place.env} />
           )}
+          <span className={`thumb-tag env env-${place.env}`}>{ENV_LABEL[place.env]}</span>
         </span>
-        <span className="tile-body">
-          <span className="tile-title">{place.title}</span>
-          <span className="addr">{shortAddr(place.addr)}</span>
-          <span className="meta">
-            <span className={`env env-${place.env}`}>{ENV_LABEL[place.env]}</span>
-            <span>{typeName(place.contentTypeId)}</span>
-          </span>
+        <span className="tile-title">{place.title}</span>
+        <span className="tile-meta">
+          {typeName(place.contentTypeId)}
+          {where && ` · ${where}`}
         </span>
       </button>
     </li>
@@ -71,7 +74,7 @@ export default function PlaceList({
     <section>
       <div className="list-head">
         <h3>
-          {searching ? `'${keyword}' 검색 결과` : '추천 장소'} {total.toLocaleString('ko-KR')}곳
+          {searching ? `'${keyword}' 검색 결과` : '여행지'} {total.toLocaleString('ko-KR')}곳
         </h3>
         <div className={searching ? 'chips is-disabled' : 'chips'} role="group" aria-label="장소 종류">
           {TYPES.map((t) => (

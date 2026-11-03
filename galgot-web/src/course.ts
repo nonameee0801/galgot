@@ -28,6 +28,58 @@ export function allDays(
   }))
 }
 
+/** 일차별 코스 항목 id 배치(끌어 옮기기, 기획서 18장 H). 키는 일차 번호, 값은 방문 순서대로의 항목 id */
+export type DayLayout = Record<number, number[]>
+
+/** 지금 코스의 배치. 일정의 모든 일차를 빈 일차까지 넣는다. */
+export function layoutOf(places: CoursePlaceItem[], tripDays: number): DayLayout {
+  const layout: DayLayout = {}
+  for (const day of allDays(places, tripDays)) layout[day.dayNo] = day.items.map((i) => i.id)
+  return layout
+}
+
+/** 항목이 든 일차. 없으면 null */
+export function dayOf(layout: DayLayout, id: number): number | null {
+  for (const [day, ids] of Object.entries(layout)) if (ids.includes(id)) return Number(day)
+  return null
+}
+
+/**
+ * 항목 하나를 toDay의 toIndex 자리로 옮긴 새 배치. 같은 일차 안이면 순서만 바뀐다.
+ * toIndex가 목록 길이보다 크면 맨 뒤로. 원래 배치는 바꾸지 않는다.
+ */
+export function moveInLayout(layout: DayLayout, id: number, toDay: number, toIndex: number): DayLayout {
+  const from = dayOf(layout, id)
+  if (from === null || layout[toDay] === undefined) return layout
+  const next: DayLayout = {}
+  for (const [day, ids] of Object.entries(layout)) next[Number(day)] = ids.filter((x) => x !== id)
+  const target = next[toDay]
+  target.splice(Math.max(0, Math.min(toIndex, target.length)), 0, id)
+  return next
+}
+
+/**
+ * 새 배치에서 일차나 방문 순서가 바뀐 항목만 골라 순서 바꾸기 API에 보낼 모양으로.
+ * 방문 순서는 일차마다 1부터 다시 매긴다(빈 자리가 생기지 않게).
+ */
+export function layoutChanges(
+  places: CoursePlaceItem[],
+  layout: DayLayout,
+): { coursePlaceId: number; dayNo: number; visitOrder: number }[] {
+  const before = new Map(places.map((p) => [p.id, p]))
+  const changes: { coursePlaceId: number; dayNo: number; visitOrder: number }[] = []
+  for (const [day, ids] of Object.entries(layout)) {
+    ids.forEach((id, i) => {
+      const old = before.get(id)
+      const dayNo = Number(day)
+      if (old && (old.dayNo !== dayNo || old.visitOrder !== i + 1)) {
+        changes.push({ coursePlaceId: id, dayNo, visitOrder: i + 1 })
+      }
+    })
+  }
+  return changes
+}
+
 /**
  * 나만의 코스에 넣기 팝업이 처음 골라 둘 코스: 맨 위(최근에 만든) 코스 중 그 장소가 아직 없고 50곳이 차지 않은 첫 코스.
  * 없으면 null(새 코스 만들기).

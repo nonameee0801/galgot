@@ -6,6 +6,7 @@ import Controls from '../components/Controls.tsx'
 import EnvPicker from '../components/EnvPicker.tsx'
 import KakaoMap from '../components/KakaoMap.tsx'
 import PlaceDetail from '../components/PlaceDetail.tsx'
+import PanelCover from '../components/PanelCover.tsx'
 import PlaceList from '../components/PlaceList.tsx'
 import SearchBox from '../components/SearchBox.tsx'
 import SidePanel from '../components/SidePanel.tsx'
@@ -13,11 +14,22 @@ import TripTab from '../components/TripTab.tsx'
 import type { TripConditions, TripWeatherInfo } from '../components/TripTab.tsx'
 import TripWeatherPanel from '../components/TripWeatherPanel.tsx'
 import WeatherCard from '../components/WeatherCard.tsx'
-import { ENV_CHOICES, REGIONS, TYPES, dayOptions, moodOf, startOptions } from '../labels.ts'
+import {
+  ENV_CHOICES,
+  REGIONS,
+  TYPES,
+  areaLabel,
+  dayOptions,
+  shortAreaName,
+  startOptions,
+  travelHeadline,
+  weatherKind,
+} from '../labels.ts'
 import type { DayOption } from '../labels.ts'
 import { loadListSearch, saveListSearch } from '../nav.ts'
 
 const PAGE_SIZE = 12
+const NO_AREAS: Area[] = []
 const DEFAULT_REGION = REGIONS[0].code
 const PANEL_KEY = 'galgot.panelCollapsed'
 const TABS = [
@@ -124,7 +136,9 @@ export default function MainPage({ me, onLogin }: Props) {
   const sp = readPlaceId(params.get('sp'))
 
   const [collapsed, setCollapsed] = useState(readCollapsed)
-  const [areas, setAreas] = useState<Area[]>([])
+  // 구·시군 목록은 어느 시도의 것인지와 함께 둔다. 시도가 바뀌면 새 목록이 올 때까지 빈 목록으로 본다
+  const [areaList, setAreaList] = useState<{ region: string; list: Area[] }>({ region: '', list: NO_AREAS })
+  const areas = areaList.region === region ? areaList.list : NO_AREAS
   const [reloadKey, setReloadKey] = useState(0)
   // 날씨기반 추천 탭을 다시 열 때마다 바꿔, 탭 안에 남은 결과와 오류 문구까지 새로 시작한다
   const [tripKey, setTripKey] = useState(0)
@@ -137,8 +151,8 @@ export default function MainPage({ me, onLogin }: Props) {
   const [data, setData] = useState<Recommendation | null>(null)
   const [places, setPlaces] = useState<Place[]>([])
   const [page, setPage] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // 마지막으로 받은 요청의 조건과 오류. 지금 조건과 다르면 불러오는 중이다(오류도 지금 조건의 것만 보인다)
+  const [result, setResult] = useState<{ key: string; error: string | null }>({ key: '', error: null })
   const [loadingMore, setLoadingMore] = useState(false)
   const [moreError, setMoreError] = useState<string | null>(null)
 
@@ -189,10 +203,9 @@ export default function MainPage({ me, onLogin }: Props) {
   // 시도가 바뀌면 그 시도의 구·시군 목록을 다시 받는다
   useEffect(() => {
     let cancelled = false
-    setAreas([])
     fetchAreas(region)
       .then((list) => {
-        if (!cancelled) setAreas(list)
+        if (!cancelled) setAreaList({ region, list })
       })
       .catch(() => {
         // 목록을 못 받아도 시도 전체 추천은 볼 수 있다
@@ -244,28 +257,29 @@ export default function MainPage({ me, onLogin }: Props) {
   }, [selectedPlace, selectedId])
 
   // 조건이 바뀔 때마다 첫 페이지부터 다시 불러온다
+  const loadKey = [region, area, date, type, env, keyword, reloadKey].join('|')
+  const loading = result.key !== loadKey
+  const error = loading ? null : result.error
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    setError(null)
-    setMoreError(null)
     fetchRecommendations({ region, area, date, type, env, keyword, page: 0, size: PAGE_SIZE })
       .then((res) => {
         if (cancelled) return
         setData(res)
         setPlaces(res.places.items)
         setPage(0)
+        setMoreError(null)
+        setResult({ key: loadKey, error: null })
       })
       .catch((e: unknown) => {
-        if (!cancelled) setError(messageOf(e))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (cancelled) return
+        setMoreError(null)
+        setResult({ key: loadKey, error: messageOf(e) })
       })
     return () => {
       cancelled = true
     }
-  }, [region, area, date, type, env, keyword, reloadKey])
+  }, [loadKey, region, area, date, type, env, keyword])
 
   // 지도 마커는 목록과 같은 조건으로 페이지 없이 받는다. 실패하면 마커만 비우고 목록은 그대로 쓴다.
   useEffect(() => {
@@ -290,11 +304,6 @@ export default function MainPage({ me, onLogin }: Props) {
     () => (focusLat !== null && focusLng !== null ? { lat: focusLat, lng: focusLng } : null),
     [focusLat, focusLng],
   )
-
-  // 날씨에 따라 페이지 전체 분위기(배경색)를 바꾼다
-  useEffect(() => {
-    document.documentElement.dataset.mood = data ? moodOf(data.weather) : 'cloud'
-  }, [data])
 
   async function loadMore() {
     setLoadingMore(true)
@@ -341,6 +350,51 @@ export default function MainPage({ me, onLogin }: Props) {
   // 날씨기반 추천 탭에서는 왼쪽 패널 옆에 날씨 패널이 붙는다(왼쪽 패널을 접으면 함께 숨긴다)
   const showTripWeather = tab === 'trip' && tripWeather !== null && !collapsed
 
+  /*
+   * 패널 표지(기획서 19장): 사진은 지금 목록(추천 탭은 1일차 결과)에서 사진이 있는 첫 장소, 판정 문장은 여행 말투.
+   * 장소 상세를 보는 동안에는 상세 사진이 있어 표지를 숨긴다.
+   */
+  function cover() {
+    if (selectedId !== null) return null
+    if (tab === 'trip') {
+      const first = tripWeather?.items[0]
+      const photoPlace = route?.[0]?.places.map((s) => s.place).find((p) => p.imageUrl ?? p.thumbnailUrl)
+      const photo = photoPlace ? (photoPlace.imageUrl ?? photoPlace.thumbnailUrl) : null
+      if (tripWeather && first?.weather && first.outdoorSuitable !== undefined) {
+        return (
+          <PanelCover
+            photo={photo}
+            kind={weatherKind(first.weather)}
+            where={`${tripWeather.where} · ${first.title}`}
+            headline={travelHeadline(first.weather, first.outdoorSuitable, shortAreaName(first.weather.areaName))}
+          />
+        )
+      }
+      return <PanelCover photo={photo} kind={null} where="날씨기반 추천" headline="날씨에 맞춘 여행 코스를 짜 드려요" />
+    }
+    const photoPlace = places.find((p) => p.imageUrl ?? p.thumbnailUrl)
+    const photo = photoPlace ? (photoPlace.imageUrl ?? photoPlace.thumbnailUrl) : null
+    if (!data || error) {
+      return (
+        <PanelCover
+          photo={photo}
+          kind={null}
+          where={error ? '날씨를 불러오지 못했어요' : '날씨를 확인하는 중'}
+          headline="오늘은 어디로 떠나 볼까요?"
+        />
+      )
+    }
+    const w = data.weather
+    return (
+      <PanelCover
+        photo={photo}
+        kind={weatherKind(w)}
+        where={`${areaLabel(w)} · ${today.name}`}
+        headline={travelHeadline(w, data.outdoorSuitable, shortAreaName(w.areaName))}
+      />
+    )
+  }
+
   return (
     <div className="stage">
       <KakaoMap
@@ -362,6 +416,7 @@ export default function MainPage({ me, onLogin }: Props) {
         onTab={openTab}
         collapsed={collapsed}
         onToggle={() => setCollapsed((c) => !c)}
+        cover={cover()}
       >
         {selectedId !== null && (
           <PlaceDetail id={selectedId} onBack={backToList} onLoaded={setSelectedPlace} me={me} onLogin={onLogin} />
@@ -388,6 +443,7 @@ export default function MainPage({ me, onLogin }: Props) {
               onSelect={openPlace}
               onRoute={setRoute}
               onWeather={setTripWeather}
+              onReset={() => openTab('trip')}
             />
           </div>
         ) : (

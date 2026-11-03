@@ -40,6 +40,8 @@ interface Props extends TripConditions {
   onRoute: (days: TripDay[] | null) => void
   /** 옆 날씨 패널 내용(지역이 정해지지 않았으면 null) */
   onWeather: (info: TripWeatherInfo | null) => void
+  /** 이 탭을 처음 상태(초기값 입력 화면)로 다시 연다. 코스 저장 팝업의 [괜찮아요] */
+  onReset: () => void
 }
 
 type Preview = { date: string; data: Recommendation } | { date: string; error: true }
@@ -204,6 +206,7 @@ export default function TripTab(props: Props) {
         onReroll={() => request(sp)}
         rerolling={loading}
         onEdit={() => onUpdate({ sp: null })}
+        onReset={props.onReset}
       />
     )
   }

@@ -94,6 +94,11 @@ declare namespace kakao.maps {
     averageCenter?: boolean
     minLevel?: number
     gridSize?: number
+    /** 묶음 원의 CSS. 묶인 개수 구간마다 하나씩(calculator와 함께) */
+    styles?: Partial<CSSStyleDeclaration>[]
+    calculator?: number[]
+    /** 묶음 원에 쓸 글자. 기본은 묶인 개수 */
+    texts?: string[] | ((count: number) => string)
   }
 
   class MarkerClusterer {

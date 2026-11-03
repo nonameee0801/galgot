@@ -5,6 +5,7 @@ import { ApiError, copySharedCourse, fetchSharedCourse } from '../api'
 import type { CourseDetail, Me } from '../api'
 import CourseDays from '../components/CourseDays'
 import CourseMapModal from '../components/CourseMapModal'
+import SavedModal from '../components/SavedModal'
 
 interface Props {
   me: Me | null
@@ -33,6 +34,8 @@ export default function SharedCoursePage({ me, meLoaded, onLogin }: Props) {
   // 지도 팝업: null이면 닫힘, placeId가 있으면 그 장소를 고른 채로 연다
   const [map, setMap] = useState<{ placeId: number | null } | null>(null)
   const [save, setSave] = useState<Save>({ kind: 'idle' })
+  // 저장 완료 팝업(2026-11-04 사용자 결정). [괜찮아요]는 팝업만 닫는다
+  const [savedPopup, setSavedPopup] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -53,6 +56,7 @@ export default function SharedCoursePage({ me, meLoaded, onLogin }: Props) {
     try {
       const copy = await copySharedCourse(code)
       setSave({ kind: 'saved', courseId: copy.id })
+      setSavedPopup(true)
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         setSave({ kind: 'idle' })
@@ -115,14 +119,6 @@ export default function SharedCoursePage({ me, meLoaded, onLogin }: Props) {
               )}
             </div>
             <p className="course-notice" aria-live="polite">
-              {save.kind === 'saved' && (
-                <>
-                  내 코스에 저장했어요.{' '}
-                  <Link className="link-btn" to={`/my/courses/${save.courseId}`}>
-                    내 코스에서 보기
-                  </Link>
-                </>
-              )}
               {save.kind === 'error' && save.message}
               {save.kind === 'limit' && (
                 <>
@@ -134,6 +130,9 @@ export default function SharedCoursePage({ me, meLoaded, onLogin }: Props) {
               )}
             </p>
 
+            {save.kind === 'saved' && savedPopup && (
+              <SavedModal title={current.course.title} courseId={save.courseId} onLater={() => setSavedPopup(false)} />
+            )}
             <CourseDays course={current.course} onShowOnMap={(placeId) => setMap({ placeId })} />
             {map && (
               <CourseMapModal

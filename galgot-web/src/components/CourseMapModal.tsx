@@ -6,6 +6,7 @@ import KakaoMap from './KakaoMap'
 import type { RouteDay } from './KakaoMap'
 import Modal from './Modal'
 import PlaceDetail from './PlaceDetail'
+import StopPhoto from './StopPhoto'
 
 interface Props {
   course: CourseDetail
@@ -67,9 +68,7 @@ export default function CourseMapModal({ course, initialPlaceId = null, onClose 
                       {d.items.map((item) => (
                         <li key={item.id}>
                           <button type="button" className="stop" onClick={() => setSelectedId(item.place.id)}>
-                            <span className="stop-no" style={{ background: color }}>
-                              {item.visitOrder}
-                            </span>
+                            <StopPhoto place={item.place} order={item.visitOrder} color={color} />
                             <span className="tile-body">
                               <span className="tile-title">{item.place.title}</span>
                               <span className="addr">{shortAddr(item.place.addr)}</span>

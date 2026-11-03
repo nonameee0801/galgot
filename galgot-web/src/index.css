@@ -1,41 +1,34 @@
-/* 날씨가 페이지의 분위기를 정한다: html[data-mood] 값에 따라 색 변수가 바뀐다 (MainPage.tsx에서 설정) */
+/*
+ * 디자인 규칙(기획서 19장, 사진 가이드북 스타일): 흰 바탕에 청록 하나를 주색으로 쓴다.
+ * 여행 분위기는 색보다 장소 사진으로 내고, 날씨는 판정 문장, 날씨 줄, 추천 배지, 표지 위 날씨 효과로만 보인다.
+ * 화면 규칙에는 색 값을 직접 쓰지 않고 아래 변수를 쓴다.
+ */
 :root {
-  --serif: 'Noto Serif KR', 'Nanum Myeongjo', serif;
-  --sans: 'IBM Plex Sans KR', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo',
+    'Malgun Gothic', sans-serif;
   --gutter: 16px;
   --float-gap: 12px;
-  --float-shadow: 0 8px 30px rgba(15, 27, 39, 0.18);
 
-  /* 흐림(기본) */
-  --bg: #e4e7eb;
-  --ink: #1b2530;
-  --muted: #4a5663;
-  --accent: #4a6c8c;
-  --soft: #d3d8de;
-}
+  /* 색 */
+  --bg: #ffffff; /* 바탕 */
+  --ink: #16242b; /* 글자 */
+  --muted: #5b6b72; /* 보조 글자 */
+  --faint: #8a979c; /* 흐린 글자 */
+  --line: #e1e8ea; /* 선, 테두리 */
+  --soft: #f1f4f5; /* 연회색 바탕 */
+  --accent: #0e6f73; /* 주색: 청록 */
+  --accent-strong: #0a5558;
+  --accent-soft: #eef7f7;
+  --rec: #f4a340; /* 날씨 추천, 실내외 */
+  --rec-ink: #3d2600; /* 추천 주황 위 글자 */
+  --outdoor: #4e8a2f; /* 실외 */
+  --danger: #b3261e;
 
-:root[data-mood='clear'] {
-  --bg: #d4e9f7;
-  --ink: #10283b;
-  --muted: #3e586d;
-  --accent: #e58a12;
-  --soft: #bfddf0;
-}
-
-:root[data-mood='wet'] {
-  --bg: #bfcbd6;
-  --ink: #0f1b27;
-  --muted: #35495b;
-  --accent: #1f4e79;
-  --soft: #aebdcb;
-}
-
-:root[data-mood='snow'] {
-  --bg: #eef2f6;
-  --ink: #1b2433;
-  --muted: #4a5568;
-  --accent: #5b6fa6;
-  --soft: #dde4ec;
+  /* 모서리, 그림자 */
+  --radius-sm: 10px; /* 버튼, 입력칸 */
+  --radius: 12px; /* 카드, 사진 */
+  --radius-lg: 16px; /* 패널, 팝업 */
+  --float-shadow: 0 10px 30px rgba(10, 40, 50, 0.15);
 }
 
 @media (min-width: 720px) {
@@ -52,7 +45,6 @@
 
 html {
   background: var(--bg);
-  transition: background-color 0.6s ease;
 }
 
 body {
@@ -62,12 +54,13 @@ body {
   font-family: var(--sans);
   font-size: 1rem;
   line-height: 1.6;
+  letter-spacing: -0.01em;
   word-break: keep-all;
-  transition: background-color 0.6s ease, color 0.6s ease;
+  -webkit-font-smoothing: antialiased;
 }
 
 :focus-visible {
-  outline: 3px solid var(--ink);
+  outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -93,16 +86,24 @@ button {
   align-items: center;
   justify-content: space-between;
   padding: 10px var(--gutter);
-  border-bottom: 1px solid var(--soft);
+  border-bottom: 1px solid var(--line);
   background: var(--bg);
 }
 
 .logo {
   margin: 0;
-  font-family: var(--serif);
-  font-weight: 900;
-  font-size: 1.5rem;
-  letter-spacing: -0.03em;
+  color: var(--accent);
+  font-weight: 800;
+  font-size: 1.375rem;
+  letter-spacing: -0.04em;
+}
+
+.logo-sub {
+  margin-left: 8px;
+  color: var(--faint);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
 .logo-link {
@@ -124,7 +125,7 @@ button {
 .btn-kakao {
   display: inline-block;
   padding: 8px 14px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: #fee500;
   color: #191919;
   font-weight: 600;
@@ -132,11 +133,38 @@ button {
 }
 
 .btn-line {
-  padding: 6px 12px;
-  border: 1.5px solid var(--ink);
-  border-radius: 6px;
-  background: transparent;
+  padding: 6px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
   color: var(--ink);
+  font-weight: 600;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.btn-line:not(:disabled):hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 채운 버튼: 화면에서 가장 중요한 동작 하나 */
+.btn-fill {
+  padding: 6px 14px;
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  transition: background-color 0.15s ease;
+}
+
+.btn-fill:not(:disabled):hover {
+  background: var(--accent-strong);
+}
+
+.btn-fill:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* 아이콘만 있는 둥근 버튼 (패널 접기, 날씨 카드 접기) */
@@ -187,7 +215,7 @@ button {
   max-width: min(24em, calc(100% - 48px));
   margin: 0;
   padding: 12px 16px;
-  border-radius: 10px;
+  border-radius: var(--radius);
   background: var(--bg);
   box-shadow: var(--float-shadow);
   color: var(--muted);
@@ -202,6 +230,24 @@ button {
   inset: 0;
 }
 
+/* 고른 장소의 흰 이름표(기획서 19장): 커진 물방울 핀 머리 오른쪽 */
+.map-pin-label {
+  max-width: 200px;
+  overflow: hidden;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(10, 40, 50, 0.25);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
 /* 패널을 접었을 때 마커 위에 뜨는 정보창 */
 .map-info {
   display: grid;
@@ -212,13 +258,13 @@ button {
   border-radius: 8px;
   background: #fff;
   box-shadow: 0 4px 16px rgba(15, 27, 39, 0.25);
-  color: #1b2530;
+  color: var(--ink);
   font-size: 0.875rem;
   line-height: 1.4;
 }
 
 .map-info span {
-  color: #4a5663;
+  color: var(--muted);
   font-size: 0.8125rem;
 }
 
@@ -226,10 +272,10 @@ button {
   justify-self: start;
   margin-top: 4px;
   padding: 3px 10px;
-  border: 1.5px solid #1b2530;
+  border: 1.5px solid var(--ink);
   border-radius: 6px;
   background: transparent;
-  color: #1b2530;
+  color: var(--ink);
   font-size: 0.8125rem;
 }
 
@@ -244,10 +290,10 @@ button {
   flex-direction: column;
   width: min(400px, calc(100% - 2 * var(--float-gap)));
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--bg);
   box-shadow: var(--float-shadow);
-  transition: width 0.25s ease, background-color 0.6s ease;
+  transition: width 0.25s ease;
 }
 
 .panel-head {
@@ -261,8 +307,8 @@ button {
 
 .panel-title {
   margin: 0;
-  font-family: var(--serif);
-  font-size: 1.25rem;
+  font-size: 1.125rem;
+  font-weight: 800;
 }
 
 .panel-body {
@@ -270,6 +316,118 @@ button {
   min-height: 0;
   overflow-y: auto;
   padding: 0 20px 20px;
+}
+
+/* 패널 표지(기획서 19장): 사진 위에 날씨 효과와 판정 문장 */
+.cover {
+  position: relative;
+  flex: none;
+  height: 168px;
+  overflow: hidden;
+  color: #fff;
+  background: linear-gradient(160deg, #6f8c99 0%, #b9c9cf 100%);
+}
+
+/* 사진이 없을 때의 날씨 그림(바탕색) */
+.cover[data-weather='clear'] {
+  background: linear-gradient(160deg, #3d8fb8 0%, #9fd0e6 60%, #f6d8a6 100%);
+}
+
+.cover[data-weather='cloud'] {
+  background: linear-gradient(160deg, #73858f 0%, #c3cdd2 100%);
+}
+
+.cover[data-weather='rain'] {
+  background: linear-gradient(160deg, #3f5868 0%, #8ea3b0 100%);
+}
+
+.cover[data-weather='snow'] {
+  background: linear-gradient(160deg, #8fa6b8 0%, #e6eef4 100%);
+}
+
+.cover-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 날씨 효과: 아래쪽은 글자가 읽히도록 어둡게 깔고, 그 위에 날씨별 무늬 */
+.cover-fx {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10, 30, 40, 0) 35%, rgba(10, 30, 40, 0.68) 100%);
+}
+
+.cover-fx::before {
+  content: '';
+  position: absolute;
+  inset: -40px 0 0;
+}
+
+.cover[data-weather='rain'] .cover-fx::before {
+  background: repeating-linear-gradient(105deg, rgba(255, 255, 255, 0.22) 0 1px, transparent 1px 13px);
+  animation: cover-rain 0.6s linear infinite;
+}
+
+.cover[data-weather='snow'] .cover-fx::before {
+  background-image:
+    radial-gradient(circle, rgba(255, 255, 255, 0.9) 1.5px, transparent 2px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.7) 1px, transparent 1.5px);
+  background-size: 34px 34px, 22px 22px;
+  background-position: 0 0, 11px 7px;
+  animation: cover-snow 4s linear infinite;
+}
+
+.cover[data-weather='clear'] .cover-fx::before {
+  background: radial-gradient(circle at 88% 8%, rgba(255, 214, 140, 0.55) 0, rgba(255, 214, 140, 0) 55%);
+}
+
+.cover[data-weather='cloud'] .cover-fx::before {
+  background: rgba(150, 165, 175, 0.28);
+}
+
+@keyframes cover-rain {
+  to {
+    transform: translate(-6px, 40px);
+  }
+}
+
+@keyframes cover-snow {
+  to {
+    transform: translateY(34px);
+  }
+}
+
+.cover-text {
+  position: absolute;
+  right: 20px;
+  bottom: 14px;
+  left: 20px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+}
+
+.cover-where {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  opacity: 0.92;
+}
+
+.cover-title {
+  margin: 2px 0 0;
+  font-size: 1.4375rem;
+  font-weight: 800;
+  line-height: 1.3;
+  letter-spacing: -0.03em;
+}
+
+/* 표지가 있으면 그 아래 탭 줄에 선을 그어 나눈다 */
+.cover + .panel-head {
+  padding-top: 6px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
 }
 
 /* 접으면 펼치기 버튼만 남는다 */
@@ -306,20 +464,19 @@ button {
 }
 
 .panel-tab {
-  padding: 4px 2px 6px;
-  margin-right: 12px;
+  padding: 6px 2px 8px;
+  margin-right: 14px;
   border: 0;
-  border-bottom: 3px solid transparent;
+  border-bottom: 2.5px solid transparent;
   background: transparent;
-  color: var(--muted);
-  font-family: var(--serif);
-  font-size: 1.0625rem;
-  font-weight: 600;
+  color: var(--faint);
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .panel-tab[aria-selected='true'] {
-  border-bottom-color: var(--ink);
-  color: var(--ink);
+  border-bottom-color: var(--accent);
+  color: var(--accent);
 }
 
 /* 날씨기반 추천: 조건 입력 (출발일 → 일정 → 지역 → 실내·실외 → 테마) */
@@ -334,9 +491,9 @@ button {
 }
 
 .field-label {
-  color: var(--muted);
+  color: var(--ink);
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* 실내·실외 버튼과 테마 버튼은 이름표 바로 아래에 붙인다. 테마는 4개를 같은 크기로 한 줄에 */
@@ -351,8 +508,8 @@ button {
 /* 출발일 달력 박스 */
 .cal {
   padding: 8px 10px 10px;
-  border: 1.5px solid var(--soft);
-  border-radius: 10px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
 }
 
 .cal-head {
@@ -408,13 +565,14 @@ button {
 
 /* 여행 기간: 출발일부터 일정 길이만큼 */
 .cal-day.in-trip {
-  background: var(--soft);
+  background: var(--accent-soft);
+  color: var(--accent);
   opacity: 1;
 }
 
 .cal-day[aria-pressed='true'] {
-  background: var(--ink);
-  color: var(--bg);
+  background: var(--accent);
+  color: #fff;
 }
 
 .hint {
@@ -433,9 +591,10 @@ button {
 
 .trip-notice {
   margin: 10px 0 0;
-  padding: 8px 10px;
-  border-left: 3px solid var(--accent);
-  background: var(--soft);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: #fdf3e6;
+  color: #6b4207;
   font-size: 0.875rem;
 }
 
@@ -474,6 +633,7 @@ button {
 
 .day-tab[aria-selected='true'] {
   color: var(--ink);
+  font-weight: 800;
 }
 
 .day-date {
@@ -493,40 +653,81 @@ button {
   list-style: none;
 }
 
+/* 방문 순서 카드(기획서 19장): 왼쪽 사진(위에 번호), 오른쪽 이름·주소·실내외 */
 .stop {
   display: flex;
   gap: 12px;
-  align-items: flex-start;
+  align-items: center;
   width: 100%;
-  padding: 10px;
-  border: 1.5px solid transparent;
-  border-radius: 10px;
-  background: var(--soft);
+  padding: 8px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
   color: var(--ink);
   text-align: left;
+  transition: border-color 0.15s ease;
+}
+
+.stop:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
 }
 
 .stop.is-selected {
-  border-color: var(--ink);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.stop-photo {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 88px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  aspect-ratio: 4 / 3;
+  background: var(--soft);
+}
+
+.stop-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.stop-photo.is-large {
+  width: 112px;
+}
+
+.stop-photo .photo-fallback svg {
+  width: 22px;
+  height: 22px;
 }
 
 .stop-no {
+  position: absolute;
+  top: 5px;
+  left: 5px;
   display: inline-flex;
-  flex: none;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #fff;
   border-radius: 50%;
+  background: var(--accent);
   color: #fff;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 800;
 }
 
 .nearby {
-  padding: 0 6px;
-  border: 1px solid var(--muted);
+  padding: 0 7px;
   border-radius: 999px;
+  background: #fdf3e6;
+  color: #6b4207;
   font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .trip-foot {
@@ -546,10 +747,9 @@ button {
   max-height: calc(100% - 2 * var(--float-gap));
   overflow-y: auto;
   padding: 12px 12px 14px 16px;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--bg);
   box-shadow: var(--float-shadow);
-  transition: background-color 0.6s ease;
 }
 
 .twp-head {
@@ -561,7 +761,6 @@ button {
 
 .twp-title {
   margin: 0;
-  font-family: var(--serif);
   font-size: 1.125rem;
 }
 
@@ -587,8 +786,8 @@ button {
 
 .twp-day {
   padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--soft);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
 }
 
 .twp-day-title {
@@ -603,7 +802,6 @@ button {
   align-items: center;
   gap: 6px;
   margin: 4px 0 8px;
-  font-family: var(--serif);
   font-size: 1.0625rem;
   font-weight: 700;
 }
@@ -618,18 +816,17 @@ button {
   font-size: 0.8125rem;
 }
 
-/* 오른쪽 위 날씨 카드 */
+/* 오른쪽 위 날씨 카드: 아이콘, 지역, 기온·하늘·강수 한 줄. 펼치면 판정 이유 */
 .weather-card {
   position: absolute;
   top: var(--float-gap);
   right: var(--float-gap);
   z-index: 2;
-  width: min(320px, calc(100% - 2 * var(--float-gap)));
-  padding: 12px 12px 14px 16px;
-  border-radius: 12px;
+  width: min(330px, calc(100% - 2 * var(--float-gap)));
+  padding: 10px 8px 10px 14px;
+  border-radius: var(--radius-lg);
   background: var(--bg);
   box-shadow: var(--float-shadow);
-  transition: background-color 0.6s ease;
 }
 
 .wc-head {
@@ -639,12 +836,37 @@ button {
   gap: 8px;
 }
 
+.wc-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.wc-main {
+  flex: 1;
+  min-width: 0;
+}
+
 .where {
   margin: 0;
-  color: var(--muted);
-  font-size: 0.875rem;
+  color: var(--faint);
+  font-size: 0.8125rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
+}
+
+.wc-line {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+.wc-line strong {
+  font-size: 1.0625rem;
+  font-weight: 800;
 }
 
 .wc-toggle {
@@ -652,24 +874,16 @@ button {
   height: 32px;
 }
 
-.weather-card[data-open='false'] .wc-toggle svg {
+.weather-card[data-open='true'] .wc-toggle svg {
   transform: rotate(180deg);
 }
 
-.wc-verdict {
-  margin: 2px 0 0;
-  padding-right: 4px;
-  font-family: var(--serif);
-  font-weight: 700;
-  font-size: 1.375rem;
-  line-height: 1.3;
-  letter-spacing: -0.02em;
-}
-
 .wc-sub {
-  margin: 6px 0 0;
+  margin: 8px 6px 2px 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
 }
 
 .facts {
@@ -719,13 +933,18 @@ button {
 .search-box input {
   flex: 1;
   min-width: 0;
-  padding: 7px 10px;
-  border: 1.5px solid var(--ink);
-  border-radius: 6px;
-  background: var(--bg);
+  padding: 8px 12px;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--soft);
   color: var(--ink);
   font: inherit;
   font-size: 0.9375rem;
+}
+
+.search-box input:focus {
+  border-color: var(--accent);
+  background: var(--bg);
 }
 
 .search-box input::-webkit-search-cancel-button {
@@ -752,22 +971,22 @@ button {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .seg {
-  padding: 8px 10px 6px;
+  padding: 5px 16px;
   border: 0;
-  border-bottom: 4px solid transparent;
-  background: none;
+  border-radius: 999px;
+  background: var(--soft);
   color: var(--muted);
-  text-align: left;
+  font-size: 0.9375rem;
+  font-weight: 600;
 }
 
 .seg[aria-pressed='true'] {
-  border-bottom-color: var(--accent);
-  color: var(--ink);
-  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
 }
 
 /*
@@ -802,9 +1021,9 @@ button {
   width: 100%;
   margin-top: 8px;
   padding: 8px 12px;
-  border: 1.5px solid var(--muted);
-  border-radius: 8px;
-  background: transparent;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
   color: var(--ink);
   font-size: 0.9375rem;
   text-align: left;
@@ -837,9 +1056,9 @@ button {
 .area-chip {
   overflow: hidden;
   padding: 6px 4px;
-  border: 1.5px solid rgba(27, 37, 48, 0.22);
-  border-radius: 6px;
-  background: transparent;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
   color: var(--ink);
   font-size: 0.8125rem;
   white-space: nowrap;
@@ -851,53 +1070,65 @@ button {
 }
 
 .area-chip[aria-pressed='true'] {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--bg);
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
   font-weight: 600;
 }
 
 /* 실내/실외/둘 다 선택. 그날 추천 버튼에는 날씨 아이콘 배지와 테두리 강조 */
 .env-picker {
   display: flex;
-  gap: 6px;
-  margin-top: 12px;
+  gap: 8px;
+  margin-top: 18px;
 }
 
 .env-btn {
+  position: relative;
   display: inline-flex;
   flex: 1;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 7px 8px;
-  border: 1.5px solid var(--muted);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--ink);
+  padding: 9px 8px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--muted);
   font-size: 0.9375rem;
+  font-weight: 600;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .env-btn.is-rec {
-  border: 2px solid var(--accent);
+  border-color: var(--rec);
 }
 
 .env-btn[aria-pressed='true'] {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--bg);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
+.env-icons {
+  display: inline-flex;
+}
+
+/* 추천 버튼 오른쪽 위에 걸친 배지 */
 .rec-badge {
+  position: absolute;
+  top: -10px;
+  right: -6px;
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 1px 7px 1px 5px;
+  padding: 1px 8px 1px 6px;
   border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
+  background: var(--rec);
+  color: var(--rec-ink);
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 .sr-only {
@@ -918,7 +1149,6 @@ button {
 
 .list-head h3 {
   margin: 0;
-  font-family: var(--serif);
   font-size: 1.125rem;
 }
 
@@ -929,22 +1159,25 @@ button {
 }
 
 .chip {
-  padding: 3px 12px;
-  border: 1.5px solid var(--ink);
+  padding: 4px 13px;
+  border: 0;
   border-radius: 999px;
-  background: transparent;
-  color: var(--ink);
+  background: var(--soft);
+  color: var(--muted);
   font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .chip[aria-pressed='true'] {
-  background: var(--ink);
-  color: var(--bg);
+  background: var(--accent);
+  color: #fff;
 }
 
+/* 사진 카드 2열(기획서 19장): 위에 사진과 실내/실외 표시, 아래 이름과 테마 · 구·시군 */
 .tiles {
   display: grid;
-  gap: 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 12px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -953,31 +1186,36 @@ button {
 /* 카드 전체가 버튼: 누르면 지도에서 그 장소로 가고 상세가 열린다 */
 .tile {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
+  gap: 2px;
+  align-content: start;
   width: 100%;
-  padding: 6px;
+  padding: 0;
   border: 0;
-  border-radius: 8px;
   background: transparent;
   color: inherit;
   text-align: left;
 }
 
-.tile:hover {
-  background: rgba(27, 37, 48, 0.06);
+.tile .thumb {
+  position: relative;
+  margin-bottom: 6px;
+  border-radius: var(--radius);
+  aspect-ratio: 4 / 3;
+  transition: box-shadow 0.15s ease;
 }
 
-.tile.is-selected {
-  background: rgba(27, 37, 48, 0.1);
-  box-shadow: inset 3px 0 0 var(--accent);
+.tile:hover .thumb img {
+  transform: scale(1.04);
+}
+
+.tile.is-selected .thumb {
+  box-shadow: 0 0 0 3px var(--accent);
 }
 
 .thumb {
   display: grid;
   place-items: center;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   aspect-ratio: 4 / 3;
   background: var(--soft);
@@ -988,24 +1226,69 @@ button {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.25s ease;
 }
 
-.thumb-fallback {
-  color: var(--muted);
-  font-family: var(--serif);
+/* 사진 위 왼쪽 위의 실내/실외 표시(점 모양 규칙은 .env와 같다) */
+.thumb-tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 1px 8px 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--ink);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.thumb-tag::before {
+  width: 8px;
+  height: 8px;
+  border-width: 1.5px;
+}
+
+/* 사진이 없는 장소의 대체 그림 */
+.photo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.photo-fallback-OUTDOOR {
+  background: #eef5ea;
+  color: var(--outdoor);
+}
+
+.photo-fallback-BOTH {
+  background: #fdf3e6;
+  color: #b06f12;
+}
+
+.tile-title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 0.9375rem;
   font-weight: 700;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.tile-meta {
+  color: var(--faint);
   font-size: 0.8125rem;
 }
 
 .tile-body {
   display: grid;
   gap: 2px;
-}
-
-.tile-title {
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.4;
 }
 
 .addr {
@@ -1038,24 +1321,33 @@ button {
   text-decoration: none;
 }
 
+/* 장소 상세 사진: 패널 안에서는 패널 폭 가득(기획서 19장) */
 .detail-photo {
   margin: 4px 0 0;
+  overflow: hidden;
+  border-radius: var(--radius);
+  aspect-ratio: 16 / 10;
+  background: var(--soft);
+}
+
+.panel .detail-photo {
+  margin: 4px -20px 0;
+  border-radius: 0;
 }
 
 .detail-photo img {
   display: block;
   width: 100%;
-  border-radius: 8px;
-  aspect-ratio: 4 / 3;
+  height: 100%;
   object-fit: cover;
-  background: var(--soft);
 }
 
 .detail-title {
-  margin: 4px 0 0;
-  font-family: var(--serif);
+  margin: 6px 0 0;
   font-size: 1.375rem;
+  font-weight: 800;
   line-height: 1.3;
+  letter-spacing: -0.03em;
 }
 
 .detail-addr {
@@ -1071,15 +1363,19 @@ button {
 }
 
 .detail-buttons {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
+  margin-top: 4px;
 }
 
-.detail-buttons .btn-line {
+.detail-buttons .btn-line,
+.detail-buttons .btn-fill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  padding: 9px 12px;
   font-size: 0.875rem;
 }
 
@@ -1118,8 +1414,8 @@ button {
   display: grid;
   gap: 8px;
   margin: 0;
-  padding: 12px 14px;
-  border-radius: 10px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
   background: var(--soft);
 }
 
@@ -1180,7 +1476,7 @@ button {
 .env {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   font-weight: 600;
 }
 
@@ -1188,17 +1484,19 @@ button {
   content: '';
   width: 10px;
   height: 10px;
-  border: 2px solid var(--ink);
+  border: 2px solid var(--accent);
   border-radius: 50%;
   background: var(--accent);
 }
 
 .env-OUTDOOR::before {
+  border-color: var(--outdoor);
   background: transparent;
 }
 
 .env-BOTH::before {
-  background: linear-gradient(90deg, var(--accent) 50%, transparent 50%);
+  border-color: var(--rec);
+  background: linear-gradient(90deg, var(--rec) 50%, transparent 50%);
 }
 
 .more {
@@ -1211,9 +1509,14 @@ button {
   padding: 10px 24px;
   border: 0;
   border-radius: 999px;
-  background: var(--ink);
-  color: var(--bg);
-  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  transition: background-color 0.15s ease;
+}
+
+.btn-more:not(:disabled):hover {
+  background: var(--accent-strong);
 }
 
 .btn-more:disabled {
@@ -1232,7 +1535,6 @@ button {
 
 .notice h3 {
   margin: 0 0 8px;
-  font-family: var(--serif);
 }
 
 .notice p {
@@ -1264,8 +1566,8 @@ button {
 .btn-danger {
   padding: 8px 16px;
   border: 0;
-  border-radius: 6px;
-  background: #b3261e;
+  border-radius: var(--radius-sm);
+  background: var(--danger);
   color: #fff;
   font-weight: 600;
 }
@@ -1287,7 +1589,7 @@ button {
   gap: 12px;
   margin: 0;
   padding: 10px var(--gutter);
-  border-left: 4px solid #b3261e;
+  border-left: 4px solid var(--danger);
   background: var(--soft);
 }
 
@@ -1296,14 +1598,14 @@ button {
   width: min(420px, calc(100vw - 32px));
   padding: 0;
   border: 0;
-  border-radius: 12px;
-  background: #fff;
-  color: #1b2530;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: 0 20px 60px rgba(10, 40, 50, 0.25);
 }
 
 .modal::backdrop {
-  background: rgba(15, 27, 39, 0.5);
+  background: rgba(10, 30, 40, 0.45);
 }
 
 .modal-body {
@@ -1319,8 +1621,8 @@ button {
 
 .modal-head h2 {
   margin: 0;
-  font-family: var(--serif);
-  font-size: 1.375rem;
+  font-size: 1.25rem;
+  font-weight: 800;
 }
 
 .modal-x {
@@ -1343,7 +1645,7 @@ button {
 
 .divider {
   margin: 16px 0;
-  color: #4a5663;
+  color: var(--faint);
   font-size: 0.875rem;
   text-align: center;
 }
@@ -1362,31 +1664,34 @@ button {
 
 .field small {
   font-weight: 400;
-  color: #4a5663;
+  color: var(--muted);
 }
 
 .field input {
   padding: 10px 12px;
-  border: 1.5px solid #9aa5b1;
-  border-radius: 6px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
   font: inherit;
   font-weight: 400;
 }
 
 .field input:focus-visible {
-  outline: 3px solid #4a6c8c;
-  outline-offset: 1px;
+  border-color: var(--accent);
+  outline: 3px solid var(--accent-soft);
+  outline-offset: 0;
 }
 
 .form-error {
   margin: 0;
-  color: #b3261e;
+  color: var(--danger);
   font-size: 0.9375rem;
 }
 
-.modal .btn-more {
-  background: #1b2530;
-  color: #fff;
+.saved-text {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
 }
 
 .switch {
@@ -1405,7 +1710,7 @@ button {
     width: auto;
     height: 60%;
     border-radius: 16px 16px 0 0;
-    transition: height 0.25s ease, background-color 0.6s ease;
+    transition: height 0.25s ease;
   }
 
   /* 시트를 내리면 제목과 펼치기 버튼만 남는다 */
@@ -1437,6 +1742,14 @@ button {
     width: auto;
   }
 
+  .cover {
+    height: 110px;
+  }
+
+  .cover-title {
+    font-size: 1.1875rem;
+  }
+
   /* 날씨 패널은 옆에 붙일 자리가 없어 지도 위쪽(날씨 카드 자리)에 띄운다. 아래 시트와 겹치지 않게 높이를 줄인다 */
   .trip-weather-panel {
     right: var(--float-gap);
@@ -1445,16 +1758,17 @@ button {
     max-height: 36%;
   }
 
-  .wc-verdict {
-    font-size: 1.125rem;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html,
-  body,
+  .cover-fx::before {
+    animation: none !important;
+  }
+
   .panel,
   .panel-list,
+  .thumb img,
+  .tile .thumb,
   .weather-card,
   .icon-btn svg {
     transition: none;
@@ -1462,10 +1776,12 @@ button {
 }
 
 /* ── 마이페이지, 내 코스 상세, 공유 코스 보기(기획서 18장 E) ── */
+/* 마이페이지·코스 화면(기획서 19장): 연회색 바탕 위에 흰 카드 구역 */
 .page {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  background: var(--soft);
 }
 
 .page-inner {
@@ -1476,9 +1792,10 @@ button {
 
 .page-title {
   margin: 12px 0 4px;
-  font-family: var(--serif);
   font-size: 1.75rem;
+  font-weight: 800;
   line-height: 1.3;
+  letter-spacing: -0.03em;
 }
 
 .eyebrow {
@@ -1488,25 +1805,31 @@ button {
 }
 
 .page-section {
-  margin-top: 28px;
+  margin-top: 16px;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: 0 1px 3px rgba(10, 40, 50, 0.06);
 }
 
 .page-section h2 {
-  margin: 0 0 10px;
-  font-family: var(--serif);
+  margin: 0 0 12px;
   font-size: 1.125rem;
+  font-weight: 800;
 }
 
 .page-notice h2 {
   margin: 0 0 8px;
-  font-family: var(--serif);
 }
 
 .user-link {
   color: inherit;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.user-link:hover {
+  color: var(--accent);
 }
 
 .course-cards {
@@ -1518,21 +1841,42 @@ button {
 }
 
 .course-card {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 12px 14px;
-  border: 1.5px solid var(--soft);
-  border-radius: 8px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
   color: inherit;
   text-decoration: none;
+  transition: border-color 0.15s ease;
 }
 
 .course-card:hover {
-  border-color: var(--ink);
+  border-color: var(--accent);
+}
+
+.course-card-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.course-card-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
 
 .course-card-title {
   font-size: 1.0625rem;
+  font-weight: 700;
 }
 
 .course-visibility {
@@ -1557,9 +1901,9 @@ button {
 }
 
 .course-edit input {
-  padding: 7px 10px;
-  border: 1.5px solid var(--ink);
-  border-radius: 6px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--ink);
   font: inherit;
@@ -1595,8 +1939,9 @@ button {
 .course-day-title {
   margin: 0 0 8px;
   padding-left: 10px;
-  border-left: 4px solid var(--ink);
+  border-left: 4px solid var(--accent);
   font-size: 1rem;
+  font-weight: 800;
 }
 
 .course-stops {
@@ -1607,34 +1952,119 @@ button {
   list-style: none;
 }
 
+/* 코스 상세의 장소 카드(기획서 18장 H): 큰 사진, 이름·정보 두 줄, 오른쪽 아이콘 버튼 */
 .course-stop {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 10px;
-  align-items: start;
-  padding: 10px 12px;
-  border: 1px solid var(--soft);
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 4px 14px;
+  align-items: center;
+  padding: 8px 10px 8px 8px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+/* 내 코스: 왼쪽 손잡이(⋮⋮)를 끌어 순서와 일차를 옮긴다(기획서 18장 H) */
+.course-stop.is-editable {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  padding-left: 2px;
+}
+
+.drag-handle {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 44px;
+  padding: 0;
+  border: 0;
   border-radius: 8px;
+  background: transparent;
+  color: var(--faint);
+  cursor: grab;
+  touch-action: none;
+}
+
+.drag-handle:not(:disabled):hover {
+  background: var(--soft);
+  color: var(--accent);
+}
+
+.drag-handle:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+/* 끄는 동안 원래 자리는 점선 칸 */
+.course-stop.is-placeholder {
+  border: 2px dashed #9cc9cb;
+  background: var(--accent-soft);
+}
+
+.course-stop.is-placeholder > * {
+  visibility: hidden;
+}
+
+/* 손에 들린 카드 */
+.course-stop.is-lifted {
+  border-color: var(--accent);
+  box-shadow: 0 12px 28px rgba(10, 40, 50, 0.22);
+  transform: rotate(-1deg);
+  cursor: grabbing;
+}
+
+.course-stops.is-empty {
+  min-height: 56px;
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius);
+  align-content: center;
+}
+
+.course-stops.is-empty .course-day-empty {
+  margin: 0;
+  padding: 12px 14px;
+  list-style: none;
+}
+
+.course-stops.is-over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.stop-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stop-body .tile-title {
+  font-size: 1rem;
+}
+
+.stop-meta {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.stop-meta .env {
+  font-weight: 600;
 }
 
 .course-stop-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
 }
 
-/* 편집할 때는 카드 오른쪽 옆에 순서 바꾸기와 삭제 */
-.course-stop.is-editable {
-  grid-template-columns: auto 1fr auto;
+.icon-btn.small {
+  color: var(--muted);
 }
 
-.map-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  width: fit-content;
-  margin-top: 2px;
-  font-size: 0.875rem;
+.icon-btn.danger-icon {
+  color: var(--danger);
+}
+
+.icon-btn.danger-icon:not(:disabled):hover {
+  background: #fdecea;
 }
 
 .small-btn {
@@ -1646,16 +2076,30 @@ button {
 }
 
 .modal .btn-more.danger-fill {
-  background: #b3261e;
+  background: var(--danger);
 }
 
+/* 좁은 화면: 아이콘 버튼을 정보 아래 줄로 */
 @media (max-width: 560px) {
+  .course-stop {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .course-stop-actions {
+    grid-column: 2;
+    justify-content: flex-end;
+  }
+
   .course-stop.is-editable {
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto auto minmax(0, 1fr);
   }
 
   .course-stop.is-editable .course-stop-actions {
-    grid-column: 2;
+    grid-column: 3;
+  }
+
+  .stop-photo.is-large {
+    width: 88px;
   }
 }
 
@@ -1665,8 +2109,8 @@ button {
 }
 
 .icon-btn.small {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
 }
 
 .icon-btn:disabled {
@@ -1683,12 +2127,12 @@ button {
 }
 
 .btn-line.danger {
-  border-color: #b3261e;
-  color: #b3261e;
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .danger-text {
-  color: #b3261e;
+  color: var(--danger);
 }
 
 .course-danger {
@@ -1742,8 +2186,8 @@ button {
   position: relative;
   min-height: 0;
   overflow: hidden;
-  border-radius: 10px;
-  background: #e8ecef;
+  border-radius: var(--radius);
+  background: var(--soft);
 }
 
 @media (max-width: 760px) {
@@ -1842,15 +2286,15 @@ button {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
-  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
   cursor: pointer;
 }
 
 .add-course-option:has(input:checked) {
   border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--accent-soft);
 }
 
 .add-course-option.is-blocked {
@@ -1903,7 +2347,7 @@ button {
   flex-shrink: 0;
   min-height: 1.2em;
   margin: 6px 0 0;
-  color: #b3261e;
+  color: var(--danger);
 }
 
 .course-day-empty {
@@ -1932,8 +2376,8 @@ button {
   min-width: 0;
   max-width: 320px;
   padding: 8px 10px;
-  border: 1.5px solid #9aa5b1;
-  border-radius: 6px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
   font: inherit;
 }
 
@@ -1979,13 +2423,14 @@ button {
 }
 
 .course-card-select.is-checked {
-  border-color: var(--ink);
-  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .course-card-body {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
 }
 
