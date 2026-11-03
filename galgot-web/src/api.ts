@@ -293,6 +293,7 @@ export function createCourse(input: NewCourse): Promise<CourseCreated> {
   return postJson<CourseCreated>('/api/courses', { ...input, publicCourse: false }, {
     400: '코스를 만들 수 없어요. 출발일(오늘 이후)과 일정을 확인해 주세요.',
     404: '장소를 찾을 수 없어요.',
+    409: COURSE_LIMIT_MESSAGE,
   })
 }
 
@@ -432,7 +433,7 @@ export function copySharedCourse(shareCode: string): Promise<CourseDetail> {
   return request<CourseDetail>(
     `/api/courses/shared/${encodeURIComponent(shareCode)}/copy`,
     { method: 'POST' },
-    { 404: '코스를 찾을 수 없어요.' },
+    { 404: '코스를 찾을 수 없어요.', 409: COURSE_LIMIT_MESSAGE },
   )
 }
 
@@ -489,6 +490,12 @@ export function updateNickname(nickname: string): Promise<Me> {
 
 /** 닉네임 최대 길이(서버 User.NICKNAME_MAX와 같다). */
 export const NICKNAME_MAX = 50
+
+/** 회원 한 명이 가질 수 있는 코스 수(서버 CourseService.MAX_COURSES_PER_USER와 같다, 기획서 18장 G). */
+export const MAX_COURSES = 20
+
+/** 코스 수 상한에 닿았을 때(409) 안내 */
+export const COURSE_LIMIT_MESSAGE = `코스는 ${MAX_COURSES}개까지 만들 수 있어요. 안 쓰는 코스를 지운 뒤 다시 해 주세요.`
 
 /** 화면에서 미리 확인하는 비밀번호 규칙(서버 CredentialPolicy와 같다). */
 export function isValidPassword(pw: string): boolean {

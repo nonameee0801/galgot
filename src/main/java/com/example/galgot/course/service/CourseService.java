@@ -10,6 +10,7 @@ import com.example.galgot.course.dto.ReorderRequest;
 import com.example.galgot.course.repository.CourseRepository;
 import com.example.galgot.place.domain.Place;
 import com.example.galgot.place.repository.PlaceRepository;
+import com.example.galgot.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
  * - 공유받은 코스는 로그인한 사람이 내 코스로 복사해 저장할 수 있다
  * - 코스에는 일정(1~3일)이 있고, 장소는 그 일차 안에만 담는다. 같은 장소는 한 코스에 한 번만(409) (기획서 18장 D)
  * - 새 코스의 출발일은 필수이고 오늘(한국 시간) 이전이면 400. 기존 코스를 수정할 때는 날짜를 따지지 않는다
+ * - 회원당 코스는 MAX_COURSES_PER_USER개까지(넘으면 409). 만들기와 복사 모두 회원 행을 잠그고 센다 (기획서 18장 G)
  */
 @Service
 @Transactional
@@ -40,20 +42,26 @@ public class CourseService {
     static final int MAX_PLACES_PER_COURSE = 50;
     /** 한 번에 지울 수 있는 코스 수 */
     static final int MAX_BULK_DELETE = 1000;
+    /** 회원 한 명이 가질 수 있는 코스 수(기획서 18장 G). 화면 api.ts의 MAX_COURSES와 같다 */
+    static final int MAX_COURSES_PER_USER = 20;
 
     private final CourseRepository courseRepository;
     private final PlaceRepository placeRepository;
+    private final UserRepository userRepository;
     private final Clock clock;
 
     @Autowired
-    public CourseService(CourseRepository courseRepository, PlaceRepository placeRepository) {
-        this(courseRepository, placeRepository, Clock.system(ZoneId.of("Asia/Seoul")));
+    public CourseService(CourseRepository courseRepository, PlaceRepository placeRepository,
+                         UserRepository userRepository) {
+        this(courseRepository, placeRepository, userRepository, Clock.system(ZoneId.of("Asia/Seoul")));
     }
 
     /** 테스트에서 오늘 날짜를 고정할 때 쓴다. */
-    CourseService(CourseRepository courseRepository, PlaceRepository placeRepository, Clock clock) {
+    CourseService(CourseRepository courseRepository, PlaceRepository placeRepository,
+                  UserRepository userRepository, Clock clock) {
         this.courseRepository = courseRepository;
         this.placeRepository = placeRepository;
+        this.userRepository = userRepository;
         this.clock = clock;
     }
 
@@ -69,6 +77,7 @@ public class CourseService {
         if (travelDate.isBefore(LocalDate.now(clock))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지난 날짜로는 코스를 만들 수 없습니다.");
         }
+        checkCourseLimit(userId);
         Place first = request.placeId() == null ? null : findPlace(request.placeId());
         String ldongRegnCd = first != null ? first.getLdongRegnCd() : blankToNull(request.ldongRegnCd());
         int tripDays = request.tripDays() == null ? 1 : request.tripDays();
@@ -197,9 +206,25 @@ public class CourseService {
 
     /** 공유받은 코스를 내 코스로 복사해 저장한다(한 번의 저장으로 코스와 장소를 함께). 없는 링크는 404. */
     public CourseDetailResponse copyShared(Long userId, String shareCode) {
-        Course copy = Course.copyOf(findShared(shareCode), userId);
+        Course shared = findShared(shareCode);
+        checkCourseLimit(userId);
+        Course copy = Course.copyOf(shared, userId);
         courseRepository.saveAndFlush(copy);
         return CourseDetailResponse.from(copy);
+    }
+
+    /**
+     * 회원당 코스 수 상한(기획서 18장 G). 회원 행을 잠그고(SELECT … FOR UPDATE) 센다.
+     * 같은 회원의 만들기 요청이 동시에 와도 차례로 세어지므로 상한을 넘지 않는다. 회원이 없으면 401.
+     */
+    private void checkCourseLimit(Long userId) {
+        if (userId == null || userRepository.findByIdForUpdate(userId).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "회원 정보를 찾을 수 없습니다.");
+        }
+        if (courseRepository.countByUserId(userId) >= MAX_COURSES_PER_USER) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "코스는 " + MAX_COURSES_PER_USER + "개까지 만들 수 있어요. 안 쓰는 코스를 지운 뒤 다시 해 주세요.");
+        }
     }
 
     private Course findShared(String shareCode) {

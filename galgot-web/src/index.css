@@ -1994,3 +1994,16 @@ button {
   width: 100%;
   margin-top: 10px;
 }
+
+/* 코스 수 상한(기획서 18장 G) */
+.course-count {
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.add-course-limit {
+  margin: 4px 0 8px;
+  font-size: 0.875rem;
+}
