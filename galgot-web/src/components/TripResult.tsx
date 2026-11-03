@@ -23,6 +23,8 @@ type SaveState =
   | { kind: 'saving' }
   | { kind: 'saved'; title: string; courseId: number }
   | { kind: 'error'; message: string }
+  /** 코스 수 상한(409, 기획서 18장 G). 안내와 함께 내 코스 정리하기 링크를 보여 준다 */
+  | { kind: 'limit'; message: string }
 
 function shortDate(date: string): string {
   const [, m, d] = date.split('-')
@@ -79,6 +81,10 @@ export default function TripResult({ trip, me, onLogin, selectedId, onSelect, on
       if (e instanceof ApiError && e.status === 401) {
         setSave({ kind: 'idle' })
         onLogin()
+        return
+      }
+      if (e instanceof ApiError && e.status === 409) {
+        setSave({ kind: 'limit', message: e.message })
         return
       }
       setSave({ kind: 'error', message: '코스를 저장하지 못했어요. 잠시 뒤에 다시 시도해 주세요.' })
@@ -179,6 +185,14 @@ export default function TripResult({ trip, me, onLogin, selectedId, onSelect, on
           </>
         )}
         {save.kind === 'error' && save.message}
+        {save.kind === 'limit' && (
+          <>
+            {save.message}{' '}
+            <Link className="link-btn" to="/my">
+              내 코스 정리하기
+            </Link>
+          </>
+        )}
         {save.kind === 'idle' && !me && '저장하려면 로그인이 필요해요.'}
       </p>
     </section>

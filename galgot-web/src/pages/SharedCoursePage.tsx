@@ -14,7 +14,13 @@ interface Props {
 
 type Load = { code: string; course: CourseDetail } | { code: string; error: string }
 
-type Save = { kind: 'idle' } | { kind: 'saving' } | { kind: 'saved'; courseId: number } | { kind: 'error'; message: string }
+type Save =
+  | { kind: 'idle' }
+  | { kind: 'saving' }
+  | { kind: 'saved'; courseId: number }
+  | { kind: 'error'; message: string }
+  /** 코스 수 상한(409, 기획서 18장 G) */
+  | { kind: 'limit'; message: string }
 
 /**
  * 공유 코스 보기(/s/:shareCode, 기획서 18장 E). 링크를 아는 사람은 비회원도 읽기 전용으로 본다.
@@ -51,6 +57,10 @@ export default function SharedCoursePage({ me, meLoaded, onLogin }: Props) {
       if (e instanceof ApiError && e.status === 401) {
         setSave({ kind: 'idle' })
         onLogin()
+        return
+      }
+      if (e instanceof ApiError && e.status === 409) {
+        setSave({ kind: 'limit', message: e.message })
         return
       }
       setSave({ kind: 'error', message: e instanceof ApiError ? e.message : '내 코스로 저장하지 못했어요.' })
@@ -114,6 +124,14 @@ export default function SharedCoursePage({ me, meLoaded, onLogin }: Props) {
                 </>
               )}
               {save.kind === 'error' && save.message}
+              {save.kind === 'limit' && (
+                <>
+                  {save.message}{' '}
+                  <Link className="link-btn" to="/my">
+                    내 코스 정리하기
+                  </Link>
+                </>
+              )}
             </p>
 
             <CourseDays course={current.course} onShowOnMap={(placeId) => setMap({ placeId })} />

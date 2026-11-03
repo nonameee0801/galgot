@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Plus } from 'lucide-react'
-import { ApiError, addCoursePlace, createCourse, fetchCourses } from '../api'
+import { ApiError, MAX_COURSES, addCoursePlace, createCourse, fetchCourses } from '../api'
 import type { CourseSummary, Place } from '../api'
 import { MAX_PLACES_PER_COURSE, defaultDay, firstAddableCourse } from '../course'
 import { TRIP_LENGTHS, tripLengthName } from '../labels'
@@ -78,9 +78,9 @@ export default function AddToCourseModal({ place, onClose, onAdded, onLoginNeede
       .then((list) => {
         if (cancelled) return
         setLoad({ kind: 'ready', list })
-        // 처음 골라 둘 코스와 일차. 고를 수 있는 코스가 없으면 새 코스 만들기
+        // 처음 골라 둘 코스와 일차. 고를 수 있는 코스가 없으면 새 코스 만들기(코스가 상한이면 아무것도 고르지 않음)
         const first = firstAddableCourse(list)
-        setTarget(first ? first.id : 'new')
+        setTarget(first ? first.id : list.length >= MAX_COURSES ? null : 'new')
         setDayNo(first ? defaultDay(first) : 1)
       })
       .catch((e: unknown) => {
@@ -94,6 +94,8 @@ export default function AddToCourseModal({ place, onClose, onAdded, onLoginNeede
   }, [place.id, reloadKey])
 
   const list = load.kind === 'ready' ? load.list : []
+  // 코스 수 상한(기획서 18장 G): 새 코스는 못 만들고 기존 코스에 넣기만 된다
+  const atLimit = list.length >= MAX_COURSES
   const selected = typeof target === 'number' ? (list.find((c) => c.id === target) ?? null) : null
   const days = target === 'new' ? tripDays : (selected?.tripDays ?? 1)
   const dateOfDays = target === 'new' ? travelDate : (selected?.travelDate ?? null)
@@ -158,12 +160,18 @@ export default function AddToCourseModal({ place, onClose, onAdded, onLoginNeede
             <fieldset className="add-course-list">
               <legend className="field-label">어느 코스에 넣을까요?</legend>
               {/* 코스가 많아도 바로 보이게 맨 위에 둔다 */}
-              <label className="add-course-option">
-                <input type="radio" name="course" checked={target === 'new'} onChange={pickNew} />
+              <label className={atLimit ? 'add-course-option is-blocked' : 'add-course-option'}>
+                <input type="radio" name="course" checked={target === 'new'} disabled={atLimit} onChange={pickNew} />
                 <span className="add-course-name">
                   <Plus size={14} aria-hidden="true" /> 새 코스 만들기
                 </span>
+                {atLimit && <span className="add-course-tag">코스 {MAX_COURSES}개가 다 찼어요</span>}
               </label>
+              {atLimit && (
+                <p className="muted add-course-limit">
+                  코스는 {MAX_COURSES}개까지 만들 수 있어요. 새 코스가 필요하면 마이페이지에서 안 쓰는 코스를 지워 주세요.
+                </p>
+              )}
               {list.map((c) => {
                 const full = c.placeCount >= MAX_PLACES_PER_COURSE
                 const blocked = c.containsPlace === true || full

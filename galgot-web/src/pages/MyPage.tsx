@@ -2,7 +2,16 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router'
 import { ArrowLeft, Map as MapIcon } from 'lucide-react'
-import { ApiError, MAX_BULK_DELETE, NICKNAME_MAX, deleteCourses, fetchCourse, fetchCourses, updateNickname } from '../api'
+import {
+  ApiError,
+  MAX_BULK_DELETE,
+  MAX_COURSES,
+  NICKNAME_MAX,
+  deleteCourses,
+  fetchCourse,
+  fetchCourses,
+  updateNickname,
+} from '../api'
 import type { CourseDetail, CourseSummary, Me } from '../api'
 import { ConfirmModal } from '../components/CourseDays'
 import CourseMapModal from '../components/CourseMapModal'
@@ -262,7 +271,15 @@ export default function MyPage({ me, meLoaded, onLogin, onWithdraw, onMeChange }
 
             <section className="page-section" aria-labelledby="my-courses">
               <div className="section-head">
-                <h2 id="my-courses">내 코스</h2>
+                <h2 id="my-courses">
+                  내 코스
+                  {courses.kind === 'ready' && (
+                    <span className="course-count">
+                      {' '}
+                      {list.length}/{MAX_COURSES}
+                    </span>
+                  )}
+                </h2>
                 {list.length > 0 &&
                   (selecting ? (
                     <div className="select-bar">
@@ -293,6 +310,11 @@ export default function MyPage({ me, meLoaded, onLogin, onWithdraw, onMeChange }
                 </p>
               )}
               {deleteError && <p role="alert">{deleteError}</p>}
+              {courses.kind === 'ready' && list.length >= MAX_COURSES && (
+                <p className="muted" role="status">
+                  코스는 {MAX_COURSES}개까지 만들 수 있어요. 새 코스를 만들려면 안 쓰는 코스를 지워 주세요.
+                </p>
+              )}
               {courses.kind === 'loading' && <p className="muted">불러오는 중이에요</p>}
               {courses.kind === 'error' && <p role="alert">{courses.message}</p>}
               {courses.kind === 'ready' && list.length === 0 && (
