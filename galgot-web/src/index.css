@@ -1766,10 +1766,12 @@ button {
 }
 
 /* ── 마이페이지, 내 코스 상세, 공유 코스 보기(기획서 18장 E) ── */
+/* 마이페이지·코스 화면(기획서 19장): 연회색 바탕 위에 흰 카드 구역 */
 .page {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  background: var(--soft);
 }
 
 .page-inner {
@@ -1781,7 +1783,9 @@ button {
 .page-title {
   margin: 12px 0 4px;
   font-size: 1.75rem;
+  font-weight: 800;
   line-height: 1.3;
+  letter-spacing: -0.03em;
 }
 
 .eyebrow {
@@ -1791,12 +1795,17 @@ button {
 }
 
 .page-section {
-  margin-top: 28px;
+  margin-top: 16px;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  background: var(--bg);
+  box-shadow: 0 1px 3px rgba(10, 40, 50, 0.06);
 }
 
 .page-section h2 {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   font-size: 1.125rem;
+  font-weight: 800;
 }
 
 .page-notice h2 {
@@ -1805,9 +1814,12 @@ button {
 
 .user-link {
   color: inherit;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.user-link:hover {
+  color: var(--accent);
 }
 
 .course-cards {
@@ -1819,21 +1831,42 @@ button {
 }
 
 .course-card {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 12px 14px;
-  border: 1.5px solid var(--soft);
-  border-radius: 8px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
   color: inherit;
   text-decoration: none;
+  transition: border-color 0.15s ease;
 }
 
 .course-card:hover {
-  border-color: var(--ink);
+  border-color: var(--accent);
+}
+
+.course-card-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.course-card-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
 
 .course-card-title {
   font-size: 1.0625rem;
+  font-weight: 700;
 }
 
 .course-visibility {
@@ -1858,9 +1891,9 @@ button {
 }
 
 .course-edit input {
-  padding: 7px 10px;
-  border: 1.5px solid var(--ink);
-  border-radius: 6px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--ink);
   font: inherit;
@@ -2044,8 +2077,8 @@ button {
   position: relative;
   min-height: 0;
   overflow: hidden;
-  border-radius: 10px;
-  background: #e8ecef;
+  border-radius: var(--radius);
+  background: var(--soft);
 }
 
 @media (max-width: 760px) {
@@ -2144,15 +2177,15 @@ button {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
-  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
   cursor: pointer;
 }
 
 .add-course-option:has(input:checked) {
   border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--accent-soft);
 }
 
 .add-course-option.is-blocked {
@@ -2281,13 +2314,14 @@ button {
 }
 
 .course-card-select.is-checked {
-  border-color: var(--ink);
-  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .course-card-body {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
 }
 
